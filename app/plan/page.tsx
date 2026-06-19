@@ -12,6 +12,8 @@ import {
   ChoiceCard,
   RadioOption,
   TagPicker,
+  ToggleGroup,
+  KidsPillInput,
 } from '@/components/wizard/WizardShell'
 import { TripGuidelines, TripType, BudgetStyle } from '@/lib/schema'
 import { calcBudgetRanges } from '@/lib/budget'
@@ -56,9 +58,14 @@ const DEFAULT: WizardState = {
   kidsAges: [],
   planningStage: 'destination_selected',
   destination: '',
+  timeframeMode: 'flexible',
   targetMonthYear: '',
   nights: 7,
+  startDate: '',
+  endDate: '',
+  travelMode: 'fly',
   departureAirport: '',
+  drivingFrom: '',
   domesticOrInternational: 'domestic',
   interests: [],
   budgetStyle: 'mid',
@@ -95,9 +102,14 @@ export default function PlanPage() {
       kidsAges: state.kidsAges,
       planningStage: state.planningStage,
       destination: state.destination,
+      timeframeMode: state.timeframeMode,
       targetMonthYear: state.targetMonthYear,
       nights: state.nights,
+      startDate: state.startDate,
+      endDate: state.endDate,
+      travelMode: state.travelMode,
       departureAirport: state.departureAirport,
+      drivingFrom: state.drivingFrom,
       domesticOrInternational: state.domesticOrInternational,
       interests: state.interests,
       budgetStyle: state.budgetStyle,
@@ -211,18 +223,7 @@ export default function PlanPage() {
 
             {state.tripType === 'family' && (
               <FormGroup label="Kids' ages" optional>
-                <FormInput
-                  type="text"
-                  placeholder="e.g. 4, 6, 9"
-                  value={state.kidsAges.join(', ')}
-                  onChange={(e) => {
-                    const ages = e.target.value
-                      .split(',')
-                      .map((s) => parseInt(s.trim()))
-                      .filter((n) => !isNaN(n))
-                    set('kidsAges', ages)
-                  }}
-                />
+                <KidsPillInput value={state.kidsAges} onChange={(ages) => set('kidsAges', ages)} />
               </FormGroup>
             )}
           </WizardCard>
@@ -266,31 +267,76 @@ export default function PlanPage() {
             </FormGroup>
 
             <FormGroup label="Timeframe">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <FormInput
-                  type="text"
-                  placeholder="Month & year (e.g. July 2026)"
-                  value={state.targetMonthYear}
-                  onChange={(e) => set('targetMonthYear', e.target.value)}
-                />
-                <FormInput
-                  id="trip-nights"
-                  type="number"
-                  placeholder="# of nights (e.g. 7)"
-                  value={state.nights || ''}
-                  onChange={(e) => set('nights', Number(e.target.value))}
-                  min={1}
+              <div style={{ marginBottom: '12px' }}>
+                <ToggleGroup
+                  value={state.timeframeMode}
+                  onChange={(v) => set('timeframeMode', v as 'flexible' | 'exact')}
+                  options={[{ value: 'flexible', label: 'Flexible' }, { value: 'exact', label: 'Exact dates' }]}
                 />
               </div>
+              {state.timeframeMode === 'flexible' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <FormInput
+                    type="text"
+                    placeholder="Month & year (e.g. July 2026)"
+                    value={state.targetMonthYear}
+                    onChange={(e) => set('targetMonthYear', e.target.value)}
+                  />
+                  <FormInput
+                    id="trip-nights"
+                    type="number"
+                    placeholder="# of nights (e.g. 7)"
+                    value={state.nights || ''}
+                    onChange={(e) => set('nights', Number(e.target.value))}
+                    min={1}
+                  />
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <FormInput
+                    type="date"
+                    placeholder="Start date"
+                    value={state.startDate}
+                    onChange={(e) => set('startDate', e.target.value)}
+                  />
+                  <FormInput
+                    type="date"
+                    placeholder="End date"
+                    value={state.endDate}
+                    onChange={(e) => set('endDate', e.target.value)}
+                  />
+                </div>
+              )}
             </FormGroup>
 
-            <FormGroup label="Flying from">
-              <FormInput
-                type="text"
-                placeholder="e.g. Phoenix, AZ (PHX/AZA)"
-                value={state.departureAirport}
-                onChange={(e) => set('departureAirport', e.target.value)}
-              />
+            <FormGroup label="Getting there">
+              <div style={{ marginBottom: '12px' }}>
+                <ToggleGroup
+                  value={state.travelMode}
+                  onChange={(v) => set('travelMode', v as 'fly' | 'drive')}
+                  options={[{ value: 'fly', label: '✈️ Flying' }, { value: 'drive', label: '🚗 Driving' }]}
+                />
+              </div>
+              {state.travelMode === 'fly' ? (
+                <FormInput
+                  type="text"
+                  placeholder="Departure airport or city (e.g. Phoenix, AZ (PHX/AZA))"
+                  value={state.departureAirport}
+                  onChange={(e) => set('departureAirport', e.target.value)}
+                />
+              ) : (
+                <>
+                  <FormInput
+                    type="text"
+                    placeholder="Driving from (e.g. Scottsdale, AZ)"
+                    value={state.drivingFrom}
+                    onChange={(e) => set('drivingFrom', e.target.value)}
+                  />
+                  <p style={{ fontSize: '13px', color: 'var(--text3)', marginTop: '6px' }}>
+                    We&apos;ll factor in drive time and suggest routes.
+                  </p>
+                </>
+              )}
             </FormGroup>
 
             <FormGroup label="Trip type">

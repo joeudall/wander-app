@@ -34,20 +34,31 @@ export async function POST(req: NextRequest) {
 
   ;(async () => {
     try {
-      const { destination, targetMonthYear, departureAirport,
+      const { destination, targetMonthYear, startDate, endDate, timeframeMode,
+        departureAirport, drivingFrom, travelMode,
         domesticOrInternational, lodgingPrefs, interests, tripType } = guidelines
 
-      send('progress', { step: 1, label: 'Researching flights…' })
-      const flightsResearch = await webSearch(`${departureAirport} to ${destination} flights ${targetMonthYear} price range`)
+      const timeframe = timeframeMode === 'exact' && startDate && endDate
+        ? `${startDate} to ${endDate}`
+        : targetMonthYear
+
+      let travelResearch: string
+      if (travelMode === 'drive') {
+        send('progress', { step: 1, label: 'Researching drive route…' })
+        travelResearch = await webSearch(`drive from ${drivingFrom} to ${destination} time route tips stops`)
+      } else {
+        send('progress', { step: 1, label: 'Researching flights…' })
+        travelResearch = await webSearch(`${departureAirport} to ${destination} flights ${timeframe} price range`)
+      }
 
       send('progress', { step: 2, label: 'Finding lodging options…' })
-      const lodgingResearch = await webSearch(`best ${lodgingPrefs.join(' ')} ${destination} ${targetMonthYear} price per night`)
+      const lodgingResearch = await webSearch(`best ${lodgingPrefs.join(' ')} ${destination} ${timeframe} price per night`)
 
       send('progress', { step: 3, label: 'Discovering activities…' })
       const activitiesResearch = await webSearch(`best things to do ${destination} with ${tripType} ${interests.slice(0, 3).join(' ')}`)
 
       send('progress', { step: 4, label: 'Checking weather & seasonality…' })
-      const weatherResearch = await webSearch(`${destination} weather ${targetMonthYear.split(' ')[0]} what to expect travel tips`)
+      const weatherResearch = await webSearch(`${destination} weather ${timeframe.split(' ')[0]} what to expect travel tips`)
 
       send('progress', { step: 5, label: 'Building your trip plan…' })
 
@@ -56,7 +67,7 @@ export async function POST(req: NextRequest) {
         max_tokens: 8000,
         system: SYNTHESIS_SYSTEM,
         messages: [{ role: 'user', content: buildSynthesisPrompt(guidelines, {
-          flights: flightsResearch,
+          flights: travelResearch,
           lodging: lodgingResearch,
           activities: activitiesResearch,
           weather: weatherResearch,

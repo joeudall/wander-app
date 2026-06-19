@@ -15,9 +15,14 @@ export interface TripGuidelines {
   // Step 2 — When & Where
   planningStage: PlanningStage
   destination: string
-  targetMonthYear: string
-  nights: number
-  departureAirport: string
+  timeframeMode: 'flexible' | 'exact'
+  targetMonthYear: string   // flexible mode
+  nights: number            // flexible mode
+  startDate?: string        // exact mode
+  endDate?: string          // exact mode
+  travelMode: 'fly' | 'drive'
+  departureAirport: string  // fly mode
+  drivingFrom?: string      // drive mode
   domesticOrInternational: TripDomesticType
 
   // Step 3 — Style

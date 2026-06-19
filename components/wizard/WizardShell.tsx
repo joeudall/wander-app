@@ -253,6 +253,137 @@ export function RadioOption({
   )
 }
 
+export function ToggleGroup({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div style={{ display: 'flex', gap: '0', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', width: 'fit-content' }}>
+      {options.map((opt) => {
+        const active = opt.value === value
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            style={{
+              padding: '9px 20px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: 'none',
+              borderRight: '1.5px solid var(--border)',
+              background: active ? 'var(--accent)' : 'var(--surface)',
+              color: active ? 'white' : 'var(--text2)',
+              transition: 'all 0.15s',
+            }}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function KidsPillInput({
+  value,
+  onChange,
+}: {
+  value: number[]
+  onChange: (ages: number[]) => void
+}) {
+  const [input, setInput] = React.useState('')
+
+  const addAge = (raw: string) => {
+    const n = parseInt(raw.trim())
+    if (!isNaN(n) && n >= 0 && n <= 17) {
+      onChange([...value, n])
+    }
+    setInput('')
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+      e.preventDefault()
+      if (input.trim()) addAge(input)
+    } else if (e.key === 'Backspace' && input === '' && value.length > 0) {
+      onChange(value.slice(0, -1))
+    }
+  }
+
+  const handleBlur = () => {
+    if (input.trim()) addAge(input)
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '6px',
+        padding: '8px 10px',
+        border: '1.5px solid var(--border)',
+        borderRadius: 'var(--radius-sm)',
+        background: 'var(--surface)',
+        cursor: 'text',
+        minHeight: '44px',
+        alignItems: 'center',
+      }}
+      onClick={(e) => (e.currentTarget.querySelector('input') as HTMLInputElement)?.focus()}
+    >
+      {value.map((age, i) => (
+        <span
+          key={i}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '3px 10px',
+            background: 'var(--accent-light)',
+            color: 'var(--accent)',
+            border: '1.5px solid var(--accent)',
+            borderRadius: '100px',
+            fontSize: '13px',
+            fontWeight: 600,
+          }}
+        >
+          {age}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onChange(value.filter((_, idx) => idx !== i)) }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: '0 0 0 2px', fontSize: '14px', lineHeight: 1 }}
+          >×</button>
+        </span>
+      ))}
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder={value.length === 0 ? 'Type an age, press Space or Enter…' : ''}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        style={{
+          border: 'none',
+          outline: 'none',
+          background: 'transparent',
+          fontSize: '14px',
+          color: 'var(--text)',
+          minWidth: '160px',
+          flex: 1,
+          fontFamily: 'inherit',
+        }}
+      />
+    </div>
+  )
+}
+
 export function TagPicker({
   options,
   selected,
