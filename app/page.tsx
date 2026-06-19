@@ -1,10 +1,25 @@
 import Link from 'next/link'
-import { SAMPLE_TRIPS } from '@/data/trips'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import TripCard from '@/components/trip/TripCard'
+import { Trip } from '@/lib/schema'
+import LogoutButton from '@/components/ui/LogoutButton'
 
-export default function Dashboard() {
-  const upcoming = SAMPLE_TRIPS.filter((t) => t.status === 'upcoming')
-  const past = SAMPLE_TRIPS.filter((t) => t.status === 'past')
+export default async function Dashboard() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: trips } = await supabase
+    .from('trips')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const allTrips: Trip[] = trips ?? []
+  const upcoming = allTrips.filter((t) => t.status === 'upcoming')
+  const past = allTrips.filter((t) => t.status === 'past')
+  const planning = allTrips.filter((t) => t.status === 'planning')
 
   return (
     <>
@@ -24,12 +39,18 @@ export default function Dashboard() {
       {/* Content */}
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: '40px 24px' }}>
 
+        {/* User + logout */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <div style={{ fontSize: '14px', color: 'var(--text2)' }}>Signed in as <strong>{user.email}</strong></div>
+          <LogoutButton />
+        </div>
+
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '48px' }}>
           {[
-            { num: SAMPLE_TRIPS.length, label: 'Trips saved' },
-            { num: 2, label: 'Countries visited' },
-            { num: 16, label: 'Travelers' },
+            { num: allTrips.length, label: 'Trips saved' },
+            { num: allTrips.filter(t => t.guidelines?.domesticOrInternational === 'international').length, label: 'International' },
+            { num: allTrips.reduce((sum, t) => sum + (t.guidelines?.travelersMin ?? 0), 0) || 0, label: 'Travelers planned' },
             { num: upcoming.length, label: 'Upcoming' },
           ].map(({ num, label }) => (
             <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px', textAlign: 'center' }}>
@@ -39,7 +60,17 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Upcoming */}
+        {allTrips.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--text2)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🗺️</div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)' }}>No trips yet</h2>
+            <p style={{ marginBottom: '24px' }}>Generate your first AI trip plan to get started.</p>
+            <Link href="/plan" style={{ background: 'var(--accent)', color: 'white', padding: '12px 24px', borderRadius: 'var(--radius-sm)', textDecoration: 'none', fontWeight: 700, fontSize: '14px' }}>
+              Plan a Trip →
+            </Link>
+          </div>
+        )}
+
         {upcoming.length > 0 && (
           <>
             <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.2px', marginBottom: '20px' }}>Upcoming</div>
@@ -49,7 +80,15 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Past */}
+        {planning.length > 0 && (
+          <>
+            <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.2px', marginBottom: '20px' }}>In Planning</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '48px' }}>
+              {planning.map((trip) => <TripCard key={trip.id} trip={trip} />)}
+            </div>
+          </>
+        )}
+
         {past.length > 0 && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>

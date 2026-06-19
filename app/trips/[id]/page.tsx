@@ -1,14 +1,18 @@
 import { notFound } from 'next/navigation'
-import { SAMPLE_TRIPS } from '@/data/trips'
+import { createClient } from '@/lib/supabase/server'
 import TripDetail from '@/components/trip/TripDetail'
-
-export function generateStaticParams() {
-  return SAMPLE_TRIPS.map((trip) => ({ id: trip.id }))
-}
 
 export default async function TripPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const trip = SAMPLE_TRIPS.find((t) => t.id === id)
+  const supabase = await createClient()
+
+  const { data: trip } = await supabase
+    .from('trips')
+    .select('*')
+    .eq('id', id)
+    .single()
+
   if (!trip) notFound()
+
   return <TripDetail trip={trip} />
 }

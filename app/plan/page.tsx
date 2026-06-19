@@ -133,20 +133,11 @@ export default function PlanPage() {
             setState((s) => ({ ...s, genStep: parsed.data.step }))
           } else if (parsed.event === 'complete') {
             setGeneratedPlan(parsed.data.plan)
-            // Store the plan and redirect — for v1, store in sessionStorage
-            const tripId = `generated-${Date.now()}`
-            const tripData = {
-              id: tripId,
-              guidelines,
-              plan: parsed.data.plan,
-              status: 'planning',
-              createdAt: new Date().toISOString(),
-              cardColor: 'blue',
-              emoji: '🗺️',
+            if (parsed.data.tripId) {
+              router.push(`/trips/${parsed.data.tripId}`)
+            } else {
+              router.push('/')
             }
-            sessionStorage.setItem(`trip-${tripId}`, JSON.stringify(tripData))
-            sessionStorage.setItem('last-generated-trip', tripId)
-            router.push(`/trips/generated?id=${tripId}`)
           } else if (parsed.event === 'error') {
             setState((s) => ({ ...s, genError: parsed.data.message }))
           }

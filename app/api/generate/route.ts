@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { anthropic, MODELS } from '@/lib/claude'
 import { buildSynthesisPrompt, SYNTHESIS_SYSTEM } from '@/lib/prompts'
 import { TripGuidelines } from '@/lib/schema'
+import { createClient } from '@/lib/supabase/server'
 
 async function webSearch(query: string): Promise<string> {
   const response = await anthropic.messages.create({
@@ -42,20 +43,16 @@ export async function POST(req: NextRequest) {
         domesticOrInternational, lodgingPrefs, interests, tripType } = guidelines
 
       send('progress', { step: 1, label: 'Researching flights…' })
-      const flightQuery = `${departureAirport} to ${destination} flights ${targetMonthYear} price range`
-      const flightsResearch = await webSearch(flightQuery)
+      const flightsResearch = await webSearch(`${departureAirport} to ${destination} flights ${targetMonthYear} price range`)
 
       send('progress', { step: 2, label: 'Finding lodging options…' })
-      const lodgingQuery = `best ${lodgingPrefs.join(' ')} ${destination} ${targetMonthYear} price per night`
-      const lodgingResearch = await webSearch(lodgingQuery)
+      const lodgingResearch = await webSearch(`best ${lodgingPrefs.join(' ')} ${destination} ${targetMonthYear} price per night`)
 
       send('progress', { step: 3, label: 'Discovering activities…' })
-      const activitiesQuery = `best things to do ${destination} with ${tripType} ${interests.slice(0, 3).join(' ')}`
-      const activitiesResearch = await webSearch(activitiesQuery)
+      const activitiesResearch = await webSearch(`best things to do ${destination} with ${tripType} ${interests.slice(0, 3).join(' ')}`)
 
       send('progress', { step: 4, label: 'Checking weather & seasonality…' })
-      const weatherQuery = `${destination} weather ${targetMonthYear.split(' ')[0]} what to expect travel tips`
-      const weatherResearch = await webSearch(weatherQuery)
+      const weatherResearch = await webSearch(`${destination} weather ${targetMonthYear.split(' ')[0]} what to expect travel tips`)
 
       send('progress', { step: 5, label: 'Building your trip plan…' })
 
@@ -78,7 +75,7 @@ export async function POST(req: NextRequest) {
         .map((b) => (b as { type: 'text'; text: string }).text)
         .join('')
 
-      send('progress', { step: 6, label: 'Finalizing packing list & budget…' })
+      send('progress', { step: 6, label: 'Saving your trip…' })
 
       let plan
       try {
@@ -90,7 +87,30 @@ export async function POST(req: NextRequest) {
         return
       }
 
-      send('complete', { plan })
+      // Save to Supabase
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      let savedTripId: string | null = null
+
+      if (user) {
+        const { data: savedTrip } = await supabase
+          .from('trips')
+          .insert({
+            user_id: user.id,
+            guidelines,
+            plan,
+            status: 'planning',
+            emoji: '🗺️',
+            card_color: 'blue',
+          })
+          .select('id')
+          .single()
+
+        savedTripId = savedTrip?.id ?? null
+      }
+
+      send('complete', { plan, tripId: savedTripId })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Generation failed'
       send('error', { message })
