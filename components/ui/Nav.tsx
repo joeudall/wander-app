@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import LogoutButton from '@/components/ui/LogoutButton'
 
 export default function Nav() {
   const pathname = usePathname()
@@ -58,6 +59,9 @@ export default function Nav() {
         >
           + New Trip
         </Link>
+        <div style={{ marginLeft: '8px' }}>
+          <LogoutButton />
+        </div>
       </div>
     </nav>
   )

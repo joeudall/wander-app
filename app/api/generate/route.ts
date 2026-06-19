@@ -26,6 +26,12 @@ async function webSearch(query: string): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const guidelines: TripGuidelines = await req.json()
 
   const encoder = new TextEncoder()
@@ -89,26 +95,22 @@ export async function POST(req: NextRequest) {
 
       // Save to Supabase
       const supabase = await createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-
       let savedTripId: string | null = null
 
-      if (user) {
-        const { data: savedTrip } = await supabase
-          .from('trips')
-          .insert({
-            user_id: user.id,
-            guidelines,
-            plan,
-            status: 'planning',
-            emoji: '🗺️',
-            card_color: 'blue',
-          })
-          .select('id')
-          .single()
+      const { data: savedTrip } = await supabase
+        .from('trips')
+        .insert({
+          user_id: user.id,
+          guidelines,
+          plan,
+          status: 'planning',
+          emoji: '🗺️',
+          card_color: 'blue',
+        })
+        .select('id')
+        .single()
 
-        savedTripId = savedTrip?.id ?? null
-      }
+      savedTripId = savedTrip?.id ?? null
 
       send('complete', { plan, tripId: savedTripId })
     } catch (err) {
