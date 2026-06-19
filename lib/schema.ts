@@ -1,0 +1,126 @@
+// Core TypeScript types matching the trip schema
+
+export type TripType = 'family' | 'adults' | 'undecided'
+export type PlanningStage = 'destination_selected' | 'ideation'
+export type TripDomesticType = 'domestic' | 'international'
+export type BudgetStyle = 'budget' | 'mid' | 'splurge'
+
+export interface TripGuidelines {
+  // Step 1 — Who
+  tripType: TripType
+  travelersMin: number
+  travelersMax: number
+  kidsAges: number[]
+
+  // Step 2 — When & Where
+  planningStage: PlanningStage
+  destination: string
+  targetMonthYear: string
+  nights: number
+  departureAirport: string
+  domesticOrInternational: TripDomesticType
+
+  // Step 3 — Style
+  interests: string[]
+  budgetStyle: BudgetStyle
+
+  // Step 4 — Details
+  dietaryNeeds: string[]
+  lodgingPrefs: string[]
+  freeTextNotes: string
+}
+
+export interface FlightOption {
+  airline: string
+  priceRange: string
+  flightTime: string
+  notes: string
+}
+
+export interface LodgingOption {
+  type: string
+  pricePerNight: string
+  neighborhood: string
+  notes: string
+}
+
+export interface Activity {
+  name: string
+  description: string
+  timeOfDay?: string
+  duration?: string
+  cost?: string
+  kidFriendly?: boolean
+  bookingRequired?: boolean
+  tags: string[]
+}
+
+export interface ItineraryDay {
+  dayNumber: number
+  date?: string
+  title: string
+  activities: Activity[]
+}
+
+export interface FoodRecommendation {
+  name: string
+  description: string
+  kidFriendly?: boolean
+  dietaryNotes?: string
+}
+
+export interface TipCategory {
+  category: string
+  icon: string
+  tips: string[]
+}
+
+export interface BudgetBreakdown {
+  flights: string
+  lodging: string
+  food: string
+  activities: string
+  total: string
+}
+
+export interface DestinationPlan {
+  destination: string
+  summary: string
+  highlights: string[]
+  weather: {
+    avgTemp: string
+    rainfall: string
+    crowdLevel: string
+    seasonalNotes: string
+  }
+  flights: FlightOption[]
+  lodging: LodgingOption[]
+  itinerary: ItineraryDay[]
+  foodGuide: {
+    mustTry: FoodRecommendation[]
+    mealTimes?: string
+    kidFriendlyPicks?: string[]
+    dietaryNotes?: string
+  }
+  tips: TipCategory[]
+  packingList: string[]
+  budget: BudgetBreakdown
+  bookings: Array<{
+    date: string
+    activity: string
+    time: string
+    platform: string
+    reference?: string
+    notes: string
+  }>
+}
+
+export interface Trip {
+  id: string
+  guidelines: TripGuidelines
+  plan: DestinationPlan
+  status: 'upcoming' | 'past' | 'planning'
+  createdAt: string
+  cardColor: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
+  emoji: string
+}
