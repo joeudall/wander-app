@@ -5,6 +5,37 @@ import { Trip } from '@/lib/schema'
 import Link from 'next/link'
 import Tag, { activityTagVariant } from '@/components/ui/Tag'
 
+function CopyLinkButton({ token }: { token: string }) {
+  const [copied, setCopied] = useState(false)
+
+  function copy() {
+    navigator.clipboard.writeText(`${window.location.origin}/trips/share/${token}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <button
+      onClick={copy}
+      style={{
+        background: 'rgba(255,255,255,0.2)',
+        border: '1px solid rgba(255,255,255,0.3)',
+        color: 'white',
+        padding: '7px 14px',
+        borderRadius: 'var(--radius-sm)',
+        fontSize: '13px',
+        fontWeight: 500,
+        cursor: 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+      }}
+    >
+      {copied ? '✓ Copied!' : '🔗 Copy link'}
+    </button>
+  )
+}
+
 const HEADER_COLORS: Record<string, string> = {
   gold: 'linear-gradient(135deg, #c7a96b 0%, #8b6914 60%, #5c4410 100%)',
   blue: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #3b82f6 100%)',
@@ -15,7 +46,7 @@ const HEADER_COLORS: Record<string, string> = {
 
 type TabName = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
 
-export default function TripDetail({ trip }: { trip: Trip }) {
+export default function TripDetail({ trip, isShared = false }: { trip: Trip; isShared?: boolean }) {
   const [activeTab, setActiveTab] = useState<TabName>('overview')
   const { plan, guidelines } = trip
 
@@ -30,26 +61,32 @@ export default function TripDetail({ trip }: { trip: Trip }) {
       {/* Header */}
       <div style={{ background: headerBg, color: 'white', padding: '48px 24px 40px', position: 'relative' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-          <Link
-            href="/"
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              color: 'white',
-              padding: '7px 14px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              marginBottom: '20px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              textDecoration: 'none',
-            }}
-          >
-            ← Back to My Trips
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            {!isShared && (
+              <Link
+                href="/"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  color: 'white',
+                  padding: '7px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  textDecoration: 'none',
+                }}
+              >
+                ← Back to My Trips
+              </Link>
+            )}
+            {trip.share_token && !isShared && (
+              <CopyLinkButton token={trip.share_token} />
+            )}
+          </div>
           <h1 style={{ fontSize: '40px', fontWeight: 800, letterSpacing: '-0.5px', marginBottom: '8px' }}>
             {trip.emoji} {plan.destination}
           </h1>

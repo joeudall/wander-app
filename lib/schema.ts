@@ -123,4 +123,5 @@ export interface Trip {
   createdAt: string
   cardColor: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
   emoji: string
+  share_token?: string
 }

@@ -8,6 +8,7 @@ create table trips (
   status text not null default 'planning' check (status in ('upcoming', 'past', 'planning')),
   emoji text not null default '🗺️',
   card_color text not null default 'blue',
+  share_token uuid unique default gen_random_uuid(),
   created_at timestamptz default now()
 );
 
@@ -29,3 +30,7 @@ create policy "Users can update own trips"
 create policy "Users can delete own trips"
   on trips for delete
   using (auth.uid() = user_id);
+
+create policy "Anyone can view trips by share token"
+  on trips for select
+  using (share_token is not null);
