@@ -2,39 +2,34 @@ import { NextRequest, NextResponse } from 'next/server'
 import { anthropic, MODELS } from '@/lib/claude'
 import { buildSynthesisPrompt, SYNTHESIS_SYSTEM } from '@/lib/prompts'
 import { TripGuidelines } from '@/lib/schema'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/auth'
+import sql from '@/lib/db'
 
 async function webSearch(query: string): Promise<string> {
   const response = await anthropic.messages.create({
     model: MODELS.utility,
     max_tokens: 800,
     tools: [{ type: 'web_search_20250305' as const, name: 'web_search' }],
-    messages: [
-      {
-        role: 'user',
-        content: `Search for: ${query}\n\nExtract the 4–6 most useful facts (prices, times, seasonal notes). Be specific with numbers. Be concise.`,
-      },
-    ],
+    messages: [{
+      role: 'user',
+      content: `Search for: ${query}\n\nExtract the 4–6 most useful facts (prices, times, seasonal notes). Be specific with numbers. Be concise.`,
+    }],
   })
-
   const text = response.content
     .filter((b) => b.type === 'text')
     .map((b) => (b as { type: 'text'; text: string }).text)
     .join('\n')
-
   return text || 'No results found.'
 }
 
 export async function POST(req: NextRequest) {
   const guidelines: TripGuidelines = await req.json()
-
   const encoder = new TextEncoder()
   const stream = new TransformStream()
   const writer = stream.writable.getWriter()
 
   const send = (event: string, data: unknown) => {
-    const line = `data: ${JSON.stringify({ event, data })}\n\n`
-    writer.write(encoder.encode(line))
+    writer.write(encoder.encode(`data: ${JSON.stringify({ event, data })}\n\n`))
   }
 
   ;(async () => {
@@ -56,18 +51,16 @@ export async function POST(req: NextRequest) {
 
       send('progress', { step: 5, label: 'Building your trip plan…' })
 
-      const userPrompt = buildSynthesisPrompt(guidelines, {
-        flights: flightsResearch,
-        lodging: lodgingResearch,
-        activities: activitiesResearch,
-        weather: weatherResearch,
-      })
-
       const synthesis = await anthropic.messages.create({
         model: MODELS.synthesis,
         max_tokens: 8000,
         system: SYNTHESIS_SYSTEM,
-        messages: [{ role: 'user', content: userPrompt }],
+        messages: [{ role: 'user', content: buildSynthesisPrompt(guidelines, {
+          flights: flightsResearch,
+          lodging: lodgingResearch,
+          activities: activitiesResearch,
+          weather: weatherResearch,
+        })}],
       })
 
       const planJson = synthesis.content
@@ -87,43 +80,28 @@ export async function POST(req: NextRequest) {
         return
       }
 
-      // Save to Supabase
-      const supabase = await createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-
+      // Save to Neon
+      const session = await auth()
       let savedTripId: string | null = null
 
-      if (user) {
-        const { data: savedTrip } = await supabase
-          .from('trips')
-          .insert({
-            user_id: user.id,
-            guidelines,
-            plan,
-            status: 'planning',
-            emoji: '🗺️',
-            card_color: 'blue',
-          })
-          .select('id')
-          .single()
-
-        savedTripId = savedTrip?.id ?? null
+      if (session?.user?.id) {
+        const rows = await sql`
+          INSERT INTO trips (user_id, guidelines, plan, status, emoji, card_color)
+          VALUES (${session.user.id}, ${JSON.stringify(guidelines)}, ${JSON.stringify(plan)}, 'planning', '🗺️', 'blue')
+          RETURNING id
+        `
+        savedTripId = rows[0]?.id ?? null
       }
 
       send('complete', { plan, tripId: savedTripId })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Generation failed'
-      send('error', { message })
+      send('error', { message: err instanceof Error ? err.message : 'Generation failed' })
     } finally {
       await writer.close()
     }
   })()
 
   return new NextResponse(stream.readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
+    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
   })
 }
