@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { anthropic, MODELS } from '@/lib/claude'
-import { buildRefinementPrompt, REFINEMENT_SYSTEM, TAB_SECTION_KEYS, RefinementTab } from '@/lib/prompts'
+import { buildRefinementPrompt, REFINEMENT_SYSTEM, CROSS_SECTION_KEYS, RefinementTab } from '@/lib/prompts'
 import { auth } from '@/auth'
 import sql from '@/lib/db'
 import { DestinationPlan, TripGuidelines } from '@/lib/schema'
@@ -29,19 +29,14 @@ export async function POST(req: NextRequest) {
 
   const plan = trip.plan as DestinationPlan
   const guidelines = trip.guidelines as TripGuidelines
-  const keys = TAB_SECTION_KEYS[tab]
-
-  const currentSection: Record<string, unknown> = {}
-  for (const key of keys) {
-    currentSection[key] = (plan as unknown as Record<string, unknown>)[key]
-  }
 
   const destination = plan.destination || guidelines.destination
-  const prompt = buildRefinementPrompt(tab, destination, guidelines, currentSection, suggestion)
+  const fullPlan = plan as unknown as Record<string, unknown>
+  const prompt = buildRefinementPrompt(tab, destination, guidelines, fullPlan, suggestion)
 
   const response = await anthropic.messages.create({
     model: MODELS.synthesis,
-    max_tokens: 4000,
+    max_tokens: 6000,
     system: REFINEMENT_SYSTEM,
     messages: [{ role: 'user', content: prompt }],
   })
