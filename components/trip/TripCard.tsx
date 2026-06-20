@@ -45,7 +45,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
             <span>👥 {travelerText}</span>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {trip.plan.highlights.slice(0, 2).map((h, i) => (
+            {(trip.plan.highlights ?? []).slice(0, 2).map((h, i) => (
               <span key={i} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '100px', fontWeight: 500, background: i === 0 ? 'var(--accent-light)' : 'var(--surface2)', color: i === 0 ? 'var(--accent)' : 'var(--text2)' }}>
                 {h.length > 30 ? h.slice(0, 28) + '…' : h}
               </span>

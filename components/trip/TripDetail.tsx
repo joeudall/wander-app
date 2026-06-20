@@ -160,25 +160,27 @@ function OverviewTab({ trip }: { trip: Trip }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
         <InfoCard title="🌟 Highlights">
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', listStyle: 'none' }}>
-            {plan.highlights.map((h, i) => (
+            {(plan.highlights ?? []).map((h, i) => (
               <li key={i} style={{ fontSize: '14px', paddingLeft: '16px', borderLeft: '3px solid var(--accent)', lineHeight: 1.45 }}>{h}</li>
             ))}
           </ul>
         </InfoCard>
-        <InfoCard title="☁️ Weather">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
-            <div><strong>Avg Temp:</strong> {plan.weather.avgTemp}</div>
-            <div><strong>Rainfall:</strong> {plan.weather.rainfall}</div>
-            <div><strong>Crowds:</strong> {plan.weather.crowdLevel}</div>
-            <div style={{ color: 'var(--text2)', fontSize: '13px', marginTop: '4px' }}>{plan.weather.seasonalNotes}</div>
-          </div>
-        </InfoCard>
+        {plan.weather && (
+          <InfoCard title="☁️ Weather">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
+              <div><strong>Avg Temp:</strong> {plan.weather.avgTemp}</div>
+              <div><strong>Rainfall:</strong> {plan.weather.rainfall}</div>
+              <div><strong>Crowds:</strong> {plan.weather.crowdLevel}</div>
+              <div style={{ color: 'var(--text2)', fontSize: '13px', marginTop: '4px' }}>{plan.weather.seasonalNotes}</div>
+            </div>
+          </InfoCard>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
         <InfoCard title="✈️ Flights">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {plan.flights.map((f, i) => (
+            {(plan.flights ?? []).map((f, i) => (
               <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
                 <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>{f.airline}</div>
                 <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{f.priceRange} · {f.flightTime}</div>
@@ -189,7 +191,7 @@ function OverviewTab({ trip }: { trip: Trip }) {
         </InfoCard>
         <InfoCard title="🏠 Lodging Options">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {plan.lodging.map((l, i) => (
+            {(plan.lodging ?? []).map((l, i) => (
               <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
                 <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>{l.type}</div>
                 <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{l.neighborhood} · {l.pricePerNight}</div>
@@ -226,7 +228,7 @@ function OverviewTab({ trip }: { trip: Trip }) {
 function ItineraryTab({ trip }: { trip: Trip }) {
   return (
     <div>
-      {trip.plan.itinerary.map((day) => (
+      {(trip.plan.itinerary ?? []).map((day) => (
         <div key={day.dayNumber} style={{ marginBottom: '32px' }}>
           {/* Day header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
@@ -301,7 +303,7 @@ function BookingsTab({ trip }: { trip: Trip }) {
           </tr>
         </thead>
         <tbody>
-          {trip.plan.bookings.map((b, i) => (
+          {(trip.plan.bookings ?? []).map((b, i) => (
             <tr key={i}>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>{b.date}</td>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}><strong>{b.activity}</strong></td>
@@ -322,12 +324,12 @@ function BookingsTab({ trip }: { trip: Trip }) {
 }
 
 function FoodTab({ trip }: { trip: Trip }) {
-  const { foodGuide } = trip.plan
+  const foodGuide = trip.plan.foodGuide ?? { mustTry: [] }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
       <InfoCard title="🍽️ Must-Try Dishes">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {foodGuide.mustTry.map((item, i) => (
+          {(foodGuide.mustTry ?? []).map((item, i) => (
             <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
               <div style={{ fontSize: '14px', fontWeight: 700 }}>{item.name}</div>
               <div style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '2px' }}>{item.description}</div>
@@ -364,7 +366,7 @@ function FoodTab({ trip }: { trip: Trip }) {
 function TipsTab({ trip }: { trip: Trip }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-      {trip.plan.tips.map((category, i) => (
+      {(trip.plan.tips ?? []).map((category, i) => (
         <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             {category.icon} {category.category}
