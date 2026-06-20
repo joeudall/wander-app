@@ -17,7 +17,6 @@ const GEN_STEPS = [
   'Researching travel options',
   'Finding lodging options',
   'Discovering activities',
-  'Checking weather & seasonality',
   'Building your trip plan',
   'Finalizing packing list & budget',
 ]
@@ -58,8 +57,11 @@ export default function PlanPage() {
   const router = useRouter()
 
   const [destination, setDestination] = useState('')
+  const [timeframeMode, setTimeframeMode] = useState<'flexible' | 'exact'>('flexible')
   const [targetMonthYear, setTargetMonthYear] = useState('')
   const [nights, setNights] = useState(7)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [travelersMin, setTravelersMin] = useState(2)
   const [travelersMax, setTravelersMax] = useState(4)
   const [tripType, setTripType] = useState<'family' | 'adults' | 'undecided'>('adults')
@@ -86,6 +88,10 @@ export default function PlanPage() {
     setGenStep(0)
     setGenError('')
 
+    const exactNights = startDate && endDate
+      ? Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))
+      : nights
+
     const guidelines: TripGuidelines = {
       tripType,
       travelersMin,
@@ -93,9 +99,11 @@ export default function PlanPage() {
       kidsAges,
       planningStage: 'destination_selected',
       destination,
-      timeframeMode: 'flexible',
-      targetMonthYear,
-      nights,
+      timeframeMode,
+      targetMonthYear: timeframeMode === 'flexible' ? targetMonthYear : '',
+      nights: timeframeMode === 'exact' ? exactNights : nights,
+      startDate: timeframeMode === 'exact' ? startDate : undefined,
+      endDate: timeframeMode === 'exact' ? endDate : undefined,
       travelMode,
       departureAirport,
       drivingFrom,
@@ -210,30 +218,87 @@ export default function PlanPage() {
           />
         </Field>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <Field label="When">
-            <input
-              type="text"
-              placeholder="📅  August 2026"
-              value={targetMonthYear}
-              onChange={(e) => setTargetMonthYear(e.target.value)}
-              style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
-            />
-          </Field>
-          <Field label="Nights">
-            <input
-              type="number"
-              min={1}
-              value={nights}
-              onChange={(e) => setNights(Number(e.target.value))}
-              style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
-            />
-          </Field>
-        </div>
+        <Field label="When">
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            {(['flexible', 'exact'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setTimeframeMode(mode)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '100px',
+                  border: `1.5px solid ${timeframeMode === mode ? 'var(--accent)' : 'var(--border)'}`,
+                  background: timeframeMode === mode ? 'var(--accent-light)' : 'var(--surface2)',
+                  color: timeframeMode === mode ? 'var(--accent)' : 'var(--text2)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {mode === 'flexible' ? 'Flexible' : 'Exact dates'}
+              </button>
+            ))}
+          </div>
+          {timeframeMode === 'flexible' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <input
+                type="text"
+                placeholder="Month & year (e.g. August 2026)"
+                value={targetMonthYear}
+                onChange={(e) => setTargetMonthYear(e.target.value)}
+                style={inputStyle}
+                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="number"
+                  min={1}
+                  value={nights}
+                  onChange={(e) => setNights(Number(e.target.value))}
+                  style={{ ...inputStyle, paddingRight: '52px' }}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+                <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: 'var(--text3)', pointerEvents: 'none' }}>nights</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '5px', fontWeight: 500 }}>Start</div>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '5px', fontWeight: 500 }}>
+                  End
+                  {startDate && endDate && new Date(endDate) > new Date(startDate) && (
+                    <span style={{ marginLeft: '6px', color: 'var(--accent)' }}>
+                      · {Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000)} nights
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+            </div>
+          )}
+        </Field>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <Field label="Travelers">

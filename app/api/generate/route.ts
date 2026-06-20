@@ -57,10 +57,7 @@ export async function POST(req: NextRequest) {
       send('progress', { step: 3, label: 'Discovering activities…' })
       const activitiesResearch = await webSearch(`best things to do ${destination} with ${tripType} ${interests.slice(0, 3).join(' ')}`)
 
-      send('progress', { step: 4, label: 'Checking weather & seasonality…' })
-      const weatherResearch = await webSearch(`${destination} weather ${timeframe.split(' ')[0]} what to expect travel tips`)
-
-      send('progress', { step: 5, label: 'Building your trip plan…' })
+      send('progress', { step: 4, label: 'Building your trip plan…' })
 
       const synthesis = await anthropic.messages.create({
         model: MODELS.synthesis,
@@ -70,7 +67,6 @@ export async function POST(req: NextRequest) {
           flights: travelResearch,
           lodging: lodgingResearch,
           activities: activitiesResearch,
-          weather: weatherResearch,
         })}],
       })
 
@@ -79,7 +75,7 @@ export async function POST(req: NextRequest) {
         .map((b) => (b as { type: 'text'; text: string }).text)
         .join('')
 
-      send('progress', { step: 6, label: 'Saving your trip…' })
+      send('progress', { step: 5, label: 'Saving your trip…' })
 
       let plan
       try {
