@@ -32,7 +32,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
 
   // Check if trip is already shared with user's group
   const shareRows = await sql`
-    SELECT ts.id FROM trip_shares ts
+    SELECT 1 FROM trip_shares ts
     JOIN family_members fm ON fm.group_id = ts.group_id
     WHERE ts.trip_id = ${id} AND fm.user_id = ${userId}
     LIMIT 1
