@@ -20,9 +20,10 @@ const MountainBanner = () => (
 
 type TabName = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
 
-export default function TripDetail({ trip }: { trip: Trip }) {
+export default function TripDetail({ trip, isOwner = false }: { trip: Trip; isOwner?: boolean }) {
   const [activeTab, setActiveTab] = useState<TabName>('overview')
   const [plan, setPlan] = useState<DestinationPlan>(trip.plan)
+  const [isPublic, setIsPublic] = useState(trip.is_public ?? false)
   const [copied, setCopied] = useState(false)
   const { guidelines } = trip
 
@@ -30,10 +31,14 @@ export default function TripDetail({ trip }: { trip: Trip }) {
     setPlan((prev) => ({ ...prev, ...section }))
   }
 
-  const copyLink = () => {
+  const handleShare = async () => {
+    if (!isPublic) {
+      await fetch(`/api/trips/${trip.id}/share`, { method: 'POST' })
+      setIsPublic(true)
+    }
     navigator.clipboard.writeText(window.location.href)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => setCopied(false), 2500)
   }
 
   const statusColors: Record<string, { bg: string; color: string }> = {
@@ -81,34 +86,44 @@ export default function TripDetail({ trip }: { trip: Trip }) {
               {plan.destination}
             </h1>
             <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-              <button
-                onClick={copyLink}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  padding: '8px 14px',
-                  borderRadius: '999px',
-                  border: '1.5px solid var(--border)',
-                  background: copied ? 'var(--accent-light)' : 'var(--surface)',
-                  color: copied ? 'var(--accent)' : 'var(--text2)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {copied ? '✓ Copied!' : (
-                  <>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    </svg>
-                    Share
-                  </>
-                )}
-              </button>
+              {isOwner && (
+                <button
+                  onClick={handleShare}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    padding: '8px 14px',
+                    borderRadius: '999px',
+                    border: '1.5px solid var(--border)',
+                    background: copied ? 'var(--accent-light)' : isPublic ? 'var(--surface2)' : 'var(--surface)',
+                    color: copied ? 'var(--accent)' : 'var(--text2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {copied ? '✓ Link copied!' : isPublic ? (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      Shared — copy link
+                    </>
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      Share link
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 

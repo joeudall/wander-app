@@ -129,6 +129,8 @@ export interface Trip {
   cardColor: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
   emoji: string
   groupId?: string
+  is_public: boolean
+  user_id: string
 }
 
 // Section 14 — Collaboration
