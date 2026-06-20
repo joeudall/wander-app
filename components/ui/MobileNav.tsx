@@ -12,6 +12,13 @@ const HomeIcon = ({ active }: { active: boolean }) => (
   </svg>
 )
 
+const TripsIcon = ({ active }: { active: boolean }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <circle cx="11" cy="11" r="7" stroke={active ? '#2F6E73' : '#A8A091'} strokeWidth="2" />
+    <path d="M16 16 L21 21" stroke={active ? '#2F6E73' : '#A8A091'} strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
 const PlanIcon = ({ active }: { active: boolean }) => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="9" stroke={active ? '#2F6E73' : '#A8A091'} strokeWidth="2" />
@@ -33,13 +40,19 @@ export default function MobileNav() {
 
   if (!session?.user) return null
 
-  const isHome = pathname === '/' || pathname.startsWith('/trips')
+  const isHome = pathname === '/'
+  const isTrips = pathname === '/trips' || (pathname.startsWith('/trips/') && pathname.length > '/trips/'.length)
   const isPlan = pathname === '/plan'
+  const isYou = showMenu
 
   return (
     <nav className="mobile-nav">
       <Link href="/" className={`mobile-tab${isHome ? ' active' : ''}`}>
         <HomeIcon active={isHome} />
+        <span>Home</span>
+      </Link>
+      <Link href="/trips" className={`mobile-tab${isTrips ? ' active' : ''}`}>
+        <TripsIcon active={isTrips} />
         <span>Trips</span>
       </Link>
       <Link href="/plan" className={`mobile-tab${isPlan ? ' active' : ''}`}>
@@ -48,17 +61,17 @@ export default function MobileNav() {
       </Link>
       <button
         type="button"
-        className={`mobile-tab${showMenu ? ' active' : ''}`}
+        className={`mobile-tab${isYou ? ' active' : ''}`}
         onClick={() => setShowMenu((v) => !v)}
       >
-        <YouIcon active={showMenu} />
+        <YouIcon active={isYou} />
         <span>You</span>
       </button>
 
       {showMenu && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 148 }} onClick={() => setShowMenu(false)} />
-          <div style={{ position: 'fixed', bottom: '80px', right: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow)', zIndex: 149, minWidth: '200px', padding: '6px' }}>
+          <div style={{ position: 'fixed', bottom: 'calc(74px + env(safe-area-inset-bottom, 0px) + 8px)', right: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow)', zIndex: 149, minWidth: '200px', padding: '6px' }}>
             <div style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text3)', borderBottom: '1px solid var(--border)', marginBottom: '6px' }}>
               {session.user.email}
             </div>

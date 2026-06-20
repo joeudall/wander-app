@@ -51,11 +51,11 @@ export default function TripDetail({ trip }: { trip: Trip }) {
   return (
     <>
       {/* Hero banner with back button overlay */}
-      <div style={{ height: '200px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ height: 'calc(200px + env(safe-area-inset-top, 0px))', position: 'relative', overflow: 'hidden' }}>
         <MountainBanner />
         <Link
-          href="/"
-          style={{ position: 'absolute', top: '48px', left: '18px', width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(251,247,240,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+          href="/trips"
+          style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', left: '18px', width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(251,247,240,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
           className="detail-back-btn"
           aria-label="Back to trips"
         >
@@ -186,6 +186,7 @@ export default function TripDetail({ trip }: { trip: Trip }) {
           .detail-back-btn { display: flex !important; }
           .detail-info-tiles { display: flex !important; }
           .detail-tab-nav { top: 0; }
+          .detail-hero { height: calc(200px + env(safe-area-inset-top, 0px)) !important; }
         }
       `}</style>
     </>
