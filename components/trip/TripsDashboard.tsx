@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react'
 import { Trip } from '@/lib/schema'
 import TripCard from './TripCard'
 
-type Filter = 'all' | 'upcoming' | 'past' | 'planning'
+type Filter = 'all' | 'upcoming' | 'past' | 'planning' | 'taken'
 
 function getInitials(email: string | null | undefined): string {
   if (!email) return '?'
@@ -21,18 +21,29 @@ const StarIcon = () => (
   </svg>
 )
 
-export default function TripsDashboard({ trips }: { trips: Trip[] }) {
+export default function TripsDashboard({ trips: initialTrips }: { trips: Trip[] }) {
   const { data: session } = useSession()
+  const [trips, setTrips] = useState<Trip[]>(initialTrips)
   const [filter, setFilter] = useState<Filter>('all')
 
   const upcoming = trips.filter((t) => t.status === 'upcoming')
   const planning = trips.filter((t) => t.status === 'planning')
   const past = trips.filter((t) => t.status === 'past')
+  const taken = trips.filter((t) => t.status === 'taken')
 
   const filtered = filter === 'all' ? trips
     : filter === 'upcoming' ? upcoming
     : filter === 'past' ? past
+    : filter === 'taken' ? taken
     : planning
+
+  function handleDelete(id: string) {
+    setTrips((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  function handleMarkTaken(id: string) {
+    setTrips((prev) => prev.map((t) => t.id === id ? { ...t, status: 'taken' as const } : t))
+  }
 
   return (
     <>
@@ -103,9 +114,9 @@ export default function TripsDashboard({ trips }: { trips: Trip[] }) {
         <>
           {/* Filter pills */}
           <div className="filter-pills">
-            {(['all', 'upcoming', 'planning', 'past'] as Filter[]).map((f) => {
-              const labels: Record<Filter, string> = { all: 'All', upcoming: 'Upcoming', planning: 'Planning', past: 'Past' }
-              const counts: Record<Filter, number> = { all: trips.length, upcoming: upcoming.length, planning: planning.length, past: past.length }
+            {(['all', 'upcoming', 'planning', 'taken', 'past'] as Filter[]).map((f) => {
+              const labels: Record<Filter, string> = { all: 'All', upcoming: 'Upcoming', planning: 'Planning', past: 'Past', taken: 'Taken' }
+              const counts: Record<Filter, number> = { all: trips.length, upcoming: upcoming.length, planning: planning.length, past: past.length, taken: taken.length }
               return (
                 <button
                   key={f}
@@ -130,9 +141,10 @@ export default function TripsDashboard({ trips }: { trips: Trip[] }) {
 
           {/* Desktop sectioned view */}
           <div className="desktop-sections">
-            {upcoming.length > 0 && <TripSection title="Upcoming" trips={upcoming} />}
-            {planning.length > 0 && <TripSection title="In Planning" trips={planning} />}
-            {past.length > 0 && <TripSection title="Past Trips" trips={past} />}
+            {upcoming.length > 0 && <TripSection title="Upcoming" trips={upcoming} onDelete={handleDelete} onMarkTaken={handleMarkTaken} />}
+            {planning.length > 0 && <TripSection title="In Planning" trips={planning} onDelete={handleDelete} onMarkTaken={handleMarkTaken} />}
+            {taken.length > 0 && <TripSection title="Taken" trips={taken} onDelete={handleDelete} onMarkTaken={handleMarkTaken} />}
+            {past.length > 0 && <TripSection title="Past Trips" trips={past} onDelete={handleDelete} onMarkTaken={handleMarkTaken} />}
           </div>
 
           {/* Mobile filtered list */}
@@ -144,7 +156,7 @@ export default function TripsDashboard({ trips }: { trips: Trip[] }) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {filtered.map((trip) => (
-                  <TripCard key={trip.id} trip={trip} />
+                  <TripCard key={trip.id} trip={trip} onDelete={handleDelete} onMarkTaken={handleMarkTaken} />
                 ))}
               </div>
             )}
@@ -197,12 +209,24 @@ export default function TripsDashboard({ trips }: { trips: Trip[] }) {
   )
 }
 
-function TripSection({ title, trips }: { title: string; trips: Trip[] }) {
+function TripSection({
+  title,
+  trips,
+  onDelete,
+  onMarkTaken,
+}: {
+  title: string
+  trips: Trip[]
+  onDelete: (id: string) => void
+  onMarkTaken: (id: string) => void
+}) {
   return (
     <div style={{ marginBottom: '44px' }}>
       <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: '16px' }}>{title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-        {trips.map((trip) => <TripCard key={trip.id} trip={trip} />)}
+        {trips.map((trip) => (
+          <TripCard key={trip.id} trip={trip} onDelete={onDelete} onMarkTaken={onMarkTaken} />
+        ))}
       </div>
     </div>
   )
