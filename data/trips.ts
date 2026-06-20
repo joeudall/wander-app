@@ -4,6 +4,8 @@ export const SAMPLE_TRIPS: Trip[] = [
   {
     id: 'spain-2026',
     status: 'past',
+    is_public: true,
+    user_id: 'sample',
     createdAt: '2025-11-01',
     cardColor: 'blue',
     emoji: '🇪🇸',
@@ -432,6 +434,8 @@ export const SAMPLE_TRIPS: Trip[] = [
   {
     id: 'tetons-2026',
     status: 'upcoming',
+    is_public: true,
+    user_id: 'sample',
     createdAt: '2026-04-15',
     cardColor: 'orange',
     emoji: '🏔️',

@@ -124,11 +124,13 @@ export interface Trip {
   id: string
   guidelines: TripGuidelines
   plan: DestinationPlan
-  status: 'upcoming' | 'past' | 'planning'
+  status: 'upcoming' | 'past' | 'planning' | 'taken'
   createdAt: string
   cardColor: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
   emoji: string
   groupId?: string
+  is_public: boolean
+  user_id: string
 }
 
 // Section 14 — Collaboration

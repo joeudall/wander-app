@@ -12,6 +12,11 @@ const INTERESTS = [
   '⭐ Stargazing', '⛵ Water / Boating', '🌃 Nightlife', '🎡 Kid Activities', '⛳ Golf / Sports',
 ]
 
+const DIETARY_OPTIONS = [
+  '🥗 Vegetarian', '🌱 Vegan', '🌾 Gluten-free', '🥛 Dairy-free',
+  '🚫🍺 No alcohol', '🥜 Nut-free', '🍖 Halal', '✡️ Kosher',
+]
+
 const GEN_STEPS = [
   'Reading your preferences',
   'Researching travel options',
@@ -72,7 +77,7 @@ export default function PlanPage() {
   const [domesticOrInternational, setDomesticOrInternational] = useState<'domestic' | 'international'>('domestic')
   const [budgetStyle, setBudgetStyle] = useState<BudgetStyle>('mid')
   const [interests, setInterests] = useState<string[]>([])
-  const [dietaryNeeds] = useState<string[]>([])
+  const [dietaryNeeds, setDietaryNeeds] = useState<string[]>([])
   const [lodgingPrefs] = useState<string[]>([])
   const [freeTextNotes, setFreeTextNotes] = useState('')
 
@@ -423,6 +428,14 @@ export default function PlanPage() {
             options={INTERESTS.map((i) => ({ label: i }))}
             selected={interests}
             onChange={setInterests}
+          />
+        </Field>
+
+        <Field label="Dietary needs">
+          <TagPicker
+            options={DIETARY_OPTIONS.map((d) => ({ label: d }))}
+            selected={dietaryNeeds}
+            onChange={setDietaryNeeds}
           />
         </Field>
 

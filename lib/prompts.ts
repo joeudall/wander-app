@@ -125,3 +125,86 @@ export const SYNTHESIS_SYSTEM = `You are a trip planning expert. You produce det
 export function buildResearchPrompt(query: string): string {
   return `Search for: ${query}\n\nExtract the key facts in 3–5 bullet points. Be specific with numbers (prices, times, distances). Note anything uncertain.`
 }
+
+export type RefinementTab = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
+
+// Primary keys each tab owns
+export const TAB_SECTION_KEYS: Record<RefinementTab, string[]> = {
+  overview: ['highlights', 'weather', 'flights', 'lodging', 'budget'],
+  itinerary: ['itinerary'],
+  bookings: ['bookings'],
+  food: ['foodGuide'],
+  tips: ['tips'],
+}
+
+// All keys that must stay in sync when a tab is refined
+export const CROSS_SECTION_KEYS: Record<RefinementTab, string[]> = {
+  overview: ['highlights', 'weather', 'flights', 'lodging', 'budget', 'bookings'],
+  itinerary: ['itinerary', 'bookings', 'budget'],
+  bookings: ['bookings'],
+  food: ['foodGuide', 'itinerary', 'bookings'],
+  tips: ['tips'],
+}
+
+const SECTION_SCHEMAS: Record<string, string> = {
+  highlights: `"highlights": string[]`,
+  weather: `"weather": { "avgTemp": string, "rainfall": string, "crowdLevel": string, "seasonalNotes": string }`,
+  flights: `"flights": [{ "airline": string, "priceRange": string, "flightTime": string, "notes": string }]`,
+  lodging: `"lodging": [{ "type": string, "pricePerNight": string, "neighborhood": string, "notes": string }]`,
+  budget: `"budget": { "flights": string, "lodging": string, "food": string, "activities": string, "total": string }`,
+  itinerary: `"itinerary": [{ "dayNumber": number, "date": string, "title": string, "activities": [{ "name": string, "description": string, "timeOfDay": string, "duration": string, "cost": string, "kidFriendly": boolean, "bookingRequired": boolean, "tags": string[] }] }]`,
+  bookings: `"bookings": [{ "date": string, "activity": string, "time": string, "platform": string, "reference": string, "notes": string }]`,
+  foodGuide: `"foodGuide": { "mustTry": [{ "name": string, "description": string, "kidFriendly": boolean, "dietaryNotes": string }], "mealTimes": string, "kidFriendlyPicks": string[], "dietaryNotes": string }`,
+  tips: `"tips": [{ "category": string, "icon": string, "tips": string[] }]`,
+}
+
+function buildCrossSchema(keys: string[]): string {
+  return `{\n  ${keys.map((k) => SECTION_SCHEMAS[k]).filter(Boolean).join(',\n  ')}\n}`
+}
+
+export function buildRefinementPrompt(
+  tab: RefinementTab,
+  destination: string,
+  guidelines: TripGuidelines,
+  fullPlan: Record<string, unknown>,
+  suggestion: string,
+): string {
+  const { tripType, travelersMin, travelersMax, kidsAges, targetMonthYear, budgetStyle, interests } = guidelines
+  const travelerCount = travelersMax > travelersMin ? `${travelersMin}–${travelersMax}` : `${travelersMin}`
+  const composition = tripType === 'family' && kidsAges.length > 0
+    ? `family with kids ages ${kidsAges.join(', ')}`
+    : tripType === 'adults' ? 'adults only' : 'mixed group'
+
+  const affectedKeys = CROSS_SECTION_KEYS[tab]
+
+  // Pull only the sections that will be updated for the current data block
+  const currentData: Record<string, unknown> = {}
+  for (const key of affectedKeys) {
+    currentData[key] = fullPlan[key]
+  }
+
+  const crossNote = affectedKeys.length > TAB_SECTION_KEYS[tab].length
+    ? `\nIMPORTANT: Your changes must be reflected consistently across ALL returned sections. For example, if a dietary preference changes, update food recommendations in both the food guide AND any food-related itinerary activities AND any restaurant bookings.`
+    : ''
+
+  return `Trip: ${destination} | ${travelerCount} travelers (${composition}) | ${targetMonthYear} | Budget: ${budgetStyle} | Interests: ${interests.join(', ')}
+
+The user wants to refine the "${tab}" section of their trip plan.
+User's request: "${suggestion}"
+${crossNote}
+
+Current data for all sections you must update:
+${JSON.stringify(currentData, null, 2)}
+
+Return ONLY valid JSON with these exact top-level keys, all updated to be fully consistent with each other:
+${buildCrossSchema(affectedKeys)}
+
+Rules:
+- Keep all cost/price values as ranges, not single numbers
+- Activity tags must come from: ["transit", "culture", "food", "free", "booking", "nature", "adventure"]
+- Preserve day count and structure unless the request implies changing it
+- All returned sections must be internally consistent — no contradictions between food guide, itinerary activities, and bookings
+- Return ONLY the JSON, no markdown fences, no explanation`
+}
+
+export const REFINEMENT_SYSTEM = `You are a trip planning expert making targeted updates to an existing trip plan. When one section changes, you ensure all related sections stay consistent — dietary changes ripple into itinerary activities and restaurant bookings, lodging changes ripple into bookings and budget, activity changes ripple into bookings. Output only valid JSON.`

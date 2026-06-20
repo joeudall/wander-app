@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Trip } from '@/lib/schema'
+import { Trip, DestinationPlan } from '@/lib/schema'
 import Link from 'next/link'
 import Tag, { activityTagVariant } from '@/components/ui/Tag'
+import RefinementPanel from '@/components/trip/RefinementPanel'
 
 const MountainBanner = () => (
   <svg viewBox="0 0 1040 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ display: 'block' }}>
@@ -19,9 +20,26 @@ const MountainBanner = () => (
 
 type TabName = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
 
-export default function TripDetail({ trip }: { trip: Trip }) {
+export default function TripDetail({ trip, isOwner = false }: { trip: Trip; isOwner?: boolean }) {
   const [activeTab, setActiveTab] = useState<TabName>('overview')
-  const { plan, guidelines } = trip
+  const [plan, setPlan] = useState<DestinationPlan>(trip.plan)
+  const [isPublic, setIsPublic] = useState(trip.is_public ?? false)
+  const [copied, setCopied] = useState(false)
+  const { guidelines } = trip
+
+  const handleRefined = (section: Partial<DestinationPlan>) => {
+    setPlan((prev) => ({ ...prev, ...section }))
+  }
+
+  const handleShare = async () => {
+    if (!isPublic) {
+      await fetch(`/api/trips/${trip.id}/share`, { method: 'POST' })
+      setIsPublic(true)
+    }
+    navigator.clipboard.writeText(window.location.href)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }
 
   const statusColors: Record<string, { bg: string; color: string }> = {
     upcoming: { bg: '#E3EDEC', color: '#265B5F' },
@@ -38,11 +56,11 @@ export default function TripDetail({ trip }: { trip: Trip }) {
   return (
     <>
       {/* Hero banner with back button overlay */}
-      <div style={{ height: '200px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ height: 'calc(200px + env(safe-area-inset-top, 0px))', position: 'relative', overflow: 'hidden' }}>
         <MountainBanner />
         <Link
-          href="/"
-          style={{ position: 'absolute', top: '48px', left: '18px', width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(251,247,240,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+          href="/trips"
+          style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', left: '18px', width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(251,247,240,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
           className="detail-back-btn"
           aria-label="Back to trips"
         >
@@ -67,7 +85,46 @@ export default function TripDetail({ trip }: { trip: Trip }) {
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '34px', lineHeight: 1.05, letterSpacing: '-0.025em', margin: 0 }}>
               {plan.destination}
             </h1>
-            <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }} />
+            <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
+              {isOwner && (
+                <button
+                  onClick={handleShare}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    padding: '8px 14px',
+                    borderRadius: '999px',
+                    border: '1.5px solid var(--border)',
+                    background: copied ? 'var(--accent-light)' : isPublic ? 'var(--surface2)' : 'var(--surface)',
+                    color: copied ? 'var(--accent)' : 'var(--text2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {copied ? '✓ Link copied!' : isPublic ? (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      Shared — copy link
+                    </>
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      Share link
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Info tiles — mobile shows these, desktop hides them */}
@@ -128,11 +185,11 @@ export default function TripDetail({ trip }: { trip: Trip }) {
 
       {/* Content */}
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview' && <OverviewTab trip={trip} />}
-        {activeTab === 'itinerary' && <ItineraryTab trip={trip} />}
-        {activeTab === 'bookings' && <BookingsTab trip={trip} />}
-        {activeTab === 'food' && <FoodTab trip={trip} />}
-        {activeTab === 'tips' && <TipsTab trip={trip} />}
+        {activeTab === 'overview' && <OverviewTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {activeTab === 'itinerary' && <ItineraryTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {activeTab === 'bookings' && <BookingsTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {activeTab === 'food' && <FoodTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {activeTab === 'tips' && <TipsTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
       </div>
 
       <style>{`
@@ -144,6 +201,7 @@ export default function TripDetail({ trip }: { trip: Trip }) {
           .detail-back-btn { display: flex !important; }
           .detail-info-tiles { display: flex !important; }
           .detail-tab-nav { top: 0; }
+          .detail-hero { height: calc(200px + env(safe-area-inset-top, 0px)) !important; }
         }
       `}</style>
     </>
@@ -181,8 +239,7 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
   )
 }
 
-function OverviewTab({ trip }: { trip: Trip }) {
-  const { plan } = trip
+function OverviewTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
@@ -249,14 +306,16 @@ function OverviewTab({ trip }: { trip: Trip }) {
           <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--accent)' }}>{plan.budget.total}</span>
         </div>
       </InfoCard>
+
+      <RefinementPanel tripId={tripId} tab="overview" onRefined={onRefined} />
     </>
   )
 }
 
-function ItineraryTab({ trip }: { trip: Trip }) {
+function ItineraryTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
   return (
     <div>
-      {(trip.plan.itinerary ?? []).map((day) => (
+      {(plan.itinerary ?? []).map((day) => (
         <div key={day.dayNumber} style={{ marginBottom: '32px' }}>
           {/* Day header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
@@ -290,11 +349,12 @@ function ItineraryTab({ trip }: { trip: Trip }) {
           </div>
         </div>
       ))}
+      <RefinementPanel tripId={tripId} tab="itinerary" onRefined={onRefined} />
     </div>
   )
 }
 
-function BookingsTab({ trip }: { trip: Trip }) {
+function BookingsTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table
@@ -331,7 +391,7 @@ function BookingsTab({ trip }: { trip: Trip }) {
           </tr>
         </thead>
         <tbody>
-          {(trip.plan.bookings ?? []).map((b, i) => (
+          {(plan.bookings ?? []).map((b, i) => (
             <tr key={i}>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>{b.date}</td>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}><strong>{b.activity}</strong></td>
@@ -347,12 +407,13 @@ function BookingsTab({ trip }: { trip: Trip }) {
           ))}
         </tbody>
       </table>
+      <RefinementPanel tripId={tripId} tab="bookings" onRefined={onRefined} />
     </div>
   )
 }
 
-function FoodTab({ trip }: { trip: Trip }) {
-  const foodGuide = trip.plan.foodGuide ?? { mustTry: [] }
+function FoodTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
+  const foodGuide = plan.foodGuide ?? { mustTry: [] }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
       <InfoCard title="🍽️ Must-Try Dishes">
@@ -387,14 +448,17 @@ function FoodTab({ trip }: { trip: Trip }) {
           </div>
         )}
       </div>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <RefinementPanel tripId={tripId} tab="food" onRefined={onRefined} />
+      </div>
     </div>
   )
 }
 
-function TipsTab({ trip }: { trip: Trip }) {
+function TipsTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-      {(trip.plan.tips ?? []).map((category, i) => (
+      {(plan.tips ?? []).map((category, i) => (
         <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             {category.icon} {category.category}
@@ -410,6 +474,9 @@ function TipsTab({ trip }: { trip: Trip }) {
           </div>
         </div>
       ))}
+      <div style={{ gridColumn: '1 / -1' }}>
+        <RefinementPanel tripId={tripId} tab="tips" onRefined={onRefined} />
+      </div>
     </div>
   )
 }

@@ -92,13 +92,16 @@ h1, h2, h3, h4, h5, h6 {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 70px;
-    background: var(--surface);
+    height: calc(74px + env(safe-area-inset-bottom, 0px));
+    background: rgba(251, 247, 240, 0.96);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-top: 1px solid var(--border);
     z-index: 150;
-    padding: 0 8px;
+    padding: 10px 8px 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    box-shadow: 0 -2px 12px rgba(46,42,36,0.06);
+    justify-content: space-around;
+    align-items: flex-start;
   }
 
   .mobile-tab {
@@ -106,8 +109,7 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 3px;
+    gap: 4px;
     font-size: 10.5px;
     font-weight: 600;
     color: #A8A091;
@@ -116,7 +118,7 @@ h1, h2, h3, h4, h5, h6 {
     border: none;
     cursor: pointer;
     font-family: var(--font-body);
-    padding: 8px 4px;
+    padding: 0 4px;
   }
 
   .mobile-tab.active {
@@ -128,7 +130,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   main {
-    padding-bottom: 80px;
+    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px) + 16px);
   }
 
   .trip-card-hover:hover {
