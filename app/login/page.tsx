@@ -99,8 +99,12 @@ export default function LoginPage() {
       </div>
 
       {/* Form panel */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 24px' }}>
-        <div style={{ width: '100%', maxWidth: '340px' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 24px' }} className="login-form-panel">
+        {/* Mobile mountain background — hidden on desktop */}
+        <div className="login-mobile-bg" style={{ display: 'none', position: 'absolute', inset: 0, zIndex: 0 }}>
+          <MountainBg />
+        </div>
+        <div style={{ width: '100%', maxWidth: '340px', position: 'relative', zIndex: 1 }} className="login-form-inner">
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, letterSpacing: '-0.02em', margin: '0' }}>
             {mode === 'login' ? 'Welcome back' : 'Create account'}
           </h2>
@@ -171,7 +175,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--text2)', marginTop: '22px' }}>
+          <p className="switch-mode" style={{ textAlign: 'center', fontSize: '14px', color: 'var(--text2)', marginTop: '22px' }}>
             {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
             <button
               onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}
@@ -186,6 +190,37 @@ export default function LoginPage() {
       <style>{`
         @media (min-width: 768px) {
           .login-brand-panel { display: block !important; }
+        }
+        @media (max-width: 767px) {
+          .login-form-panel {
+            background: #2E2A24 !important;
+            position: relative;
+            overflow: hidden;
+          }
+          .login-form-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(46,42,36,0) 40%, rgba(46,42,36,.9) 65%, #2E2A24 82%);
+            pointer-events: none;
+            z-index: 0;
+          }
+          .login-form-inner {
+            position: relative;
+            z-index: 1;
+          }
+          .login-form-inner h2 { color: #F4EEE4 !important; }
+          .login-form-inner p { color: #b8b1a3 !important; }
+          .login-form-inner label { color: #8e887c !important; }
+          .login-form-inner input {
+            background: #3a352d !important;
+            border-color: #4a443b !important;
+            color: #F4EEE4 !important;
+          }
+          .login-form-inner .switch-mode { color: #b8b1a3 !important; }
+          .login-mobile-bg {
+            display: block !important;
+          }
         }
       `}</style>
     </div>

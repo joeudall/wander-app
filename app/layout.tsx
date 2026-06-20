@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Nav from '@/components/ui/Nav'
+import MobileNav from '@/components/ui/MobileNav'
 import Providers from '@/components/ui/Providers'
 
 export const metadata: Metadata = {
@@ -13,8 +14,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers>
-          <Nav />
+          <div className="top-nav">
+            <Nav />
+          </div>
           <main>{children}</main>
+          <MobileNav />
         </Providers>
       </body>
     </html>

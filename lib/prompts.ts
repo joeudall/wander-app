@@ -6,7 +6,6 @@ export function buildSynthesisPrompt(
     flights: string
     lodging: string
     activities: string
-    weather: string
   }
 ): string {
   const { tripType, travelersMin, travelersMax, kidsAges, destination,
@@ -39,9 +38,6 @@ ${research.lodging}
 
 [ACTIVITIES & ATTRACTIONS RESEARCH]
 ${research.activities}
-
-[WEATHER & SEASONALITY]
-${research.weather}
 
 Produce a complete trip plan as a JSON object matching this exact TypeScript interface. Return ONLY the JSON, no markdown fences, no explanation:
 
