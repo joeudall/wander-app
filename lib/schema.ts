@@ -128,4 +128,34 @@ export interface Trip {
   createdAt: string
   cardColor: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
   emoji: string
+  groupId?: string
+}
+
+// Section 14 — Collaboration
+
+export interface FamilyGroup {
+  id: string
+  name: string
+  createdBy: string
+  createdAt: string
+}
+
+export interface Member {
+  userId: string
+  email: string
+  role: 'owner' | 'member'
+  joinedAt: string
+}
+
+export interface Comment {
+  id: string
+  tripId: string
+  userId: string
+  authorEmail: string
+  body: string
+  referenceType: 'trip' | 'day' | 'activity'
+  referenceId?: string
+  createdAt: string
+  updatedAt?: string
+  isRead: boolean
 }

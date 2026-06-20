@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Trip } from '@/lib/schema'
 import Link from 'next/link'
 import Tag, { activityTagVariant } from '@/components/ui/Tag'
+import CommentsPanel from '@/components/family/CommentsPanel'
 
 const MountainBanner = () => (
   <svg viewBox="0 0 1040 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ display: 'block' }}>
@@ -19,8 +20,15 @@ const MountainBanner = () => (
 
 type TabName = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
 
-export default function TripDetail({ trip }: { trip: Trip }) {
+interface TripDetailProps {
+  trip: Trip
+  isOwner?: boolean
+  isShared?: boolean
+}
+
+export default function TripDetail({ trip, isOwner = false, isShared: initialShared = false }: TripDetailProps) {
   const [activeTab, setActiveTab] = useState<TabName>('overview')
+  const [shared, setShared] = useState(initialShared)
   const { plan, guidelines } = trip
 
   const statusColors: Record<string, { bg: string; color: string }> = {
@@ -54,7 +62,6 @@ export default function TripDetail({ trip }: { trip: Trip }) {
             </h1>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-            <button style={{ background: 'transparent', color: 'var(--accent)', border: '1px solid var(--accent)', padding: '10px 18px', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Share</button>
             <button style={{ background: 'var(--accent)', color: '#FBF7F0', border: 'none', padding: '11px 18px', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Edit trip</button>
           </div>
         </div>
@@ -103,6 +110,14 @@ export default function TripDetail({ trip }: { trip: Trip }) {
         {activeTab === 'food' && <FoodTab trip={trip} />}
         {activeTab === 'tips' && <TipsTab trip={trip} />}
       </div>
+
+      <CommentsPanel
+        tripId={trip.id}
+        isOwner={isOwner}
+        isShared={shared}
+        onShare={() => setShared(true)}
+        onUnshare={() => setShared(false)}
+      />
     </>
   )
 }
