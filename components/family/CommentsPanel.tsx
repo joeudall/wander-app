@@ -23,6 +23,7 @@ export default function CommentsPanel({ tripId, isOwner, isShared, onShare, onUn
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [copied, setCopied] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   async function load() {
@@ -68,7 +69,12 @@ export default function CommentsPanel({ tripId, isOwner, isShared, onShare, onUn
       onUnshare()
     } else {
       const res = await fetch(`/api/trips/${tripId}/share`, { method: 'POST' })
-      if (res.ok) onShare()
+      if (res.ok) {
+        onShare()
+        await navigator.clipboard.writeText(window.location.href)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2500)
+      }
     }
     setSharing(false)
   }
@@ -82,8 +88,8 @@ export default function CommentsPanel({ tripId, isOwner, isShared, onShare, onUn
             onClick={toggleShare}
             disabled={sharing}
             style={{
-              background: isShared ? 'var(--accent-light)' : 'var(--surface)',
-              color: isShared ? 'var(--accent)' : 'var(--text2)',
+              background: copied ? '#e6f4f1' : isShared ? 'var(--accent-light)' : 'var(--surface)',
+              color: copied ? 'var(--accent)' : isShared ? 'var(--accent)' : 'var(--text2)',
               border: `1px solid ${isShared ? 'var(--accent)' : 'var(--border)'}`,
               padding: '9px 16px',
               borderRadius: '100px',
@@ -91,9 +97,10 @@ export default function CommentsPanel({ tripId, isOwner, isShared, onShare, onUn
               fontWeight: 600,
               cursor: sharing ? 'not-allowed' : 'pointer',
               boxShadow: 'var(--shadow)',
+              transition: 'all 0.2s',
             }}
           >
-            {isShared ? '✓ Shared with family' : '+ Share with family'}
+            {copied ? '✓ Link copied!' : isShared ? '🔗 Shared — copy link' : '+ Share link'}
           </button>
         )}
 

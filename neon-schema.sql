@@ -84,6 +84,12 @@ CREATE TABLE IF NOT EXISTS comment_reads (
 
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES family_groups(id);
 
+-- Google OAuth: password_hash is not needed for SSO users
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+
+-- Public link sharing: anyone with the link can view
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE INDEX IF NOT EXISTS family_members_user_id_idx ON family_members(user_id);
 CREATE INDEX IF NOT EXISTS family_members_group_id_idx ON family_members(group_id);
 CREATE INDEX IF NOT EXISTS trip_shares_group_id_idx ON trip_shares(group_id);

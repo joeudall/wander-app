@@ -122,6 +122,7 @@ export interface DestinationPlan {
 
 export interface Trip {
   id: string
+  user_id: string
   guidelines: TripGuidelines
   plan: DestinationPlan
   status: 'upcoming' | 'past' | 'planning'
@@ -129,6 +130,7 @@ export interface Trip {
   cardColor: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
   emoji: string
   groupId?: string
+  is_public: boolean
 }
 
 // Section 14 — Collaboration

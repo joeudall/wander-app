@@ -24,9 +24,10 @@ interface TripDetailProps {
   trip: Trip
   isOwner?: boolean
   isShared?: boolean
+  isLoggedIn?: boolean
 }
 
-export default function TripDetail({ trip, isOwner = false, isShared: initialShared = false }: TripDetailProps) {
+export default function TripDetail({ trip, isOwner = false, isShared: initialShared = false, isLoggedIn = false }: TripDetailProps) {
   const [activeTab, setActiveTab] = useState<TabName>('overview')
   const [shared, setShared] = useState(initialShared)
   const { plan, guidelines } = trip
@@ -62,7 +63,12 @@ export default function TripDetail({ trip, isOwner = false, isShared: initialSha
             </h1>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-            <button style={{ background: 'var(--accent)', color: '#FBF7F0', border: 'none', padding: '11px 18px', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Edit trip</button>
+            {isOwner && (
+              <button style={{ background: 'var(--accent)', color: '#FBF7F0', border: 'none', padding: '11px 18px', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Edit trip</button>
+            )}
+            {!isOwner && (
+              <span style={{ fontSize: '13px', color: 'var(--text3)', padding: '11px 0', fontStyle: 'italic' }}>View only</span>
+            )}
           </div>
         </div>
       </div>
@@ -111,13 +117,15 @@ export default function TripDetail({ trip, isOwner = false, isShared: initialSha
         {activeTab === 'tips' && <TipsTab trip={trip} />}
       </div>
 
-      <CommentsPanel
-        tripId={trip.id}
-        isOwner={isOwner}
-        isShared={shared}
-        onShare={() => setShared(true)}
-        onUnshare={() => setShared(false)}
-      />
+      {isLoggedIn && (
+        <CommentsPanel
+          tripId={trip.id}
+          isOwner={isOwner}
+          isShared={shared}
+          onShare={() => setShared(true)}
+          onUnshare={() => setShared(false)}
+        />
+      )}
     </>
   )
 }
