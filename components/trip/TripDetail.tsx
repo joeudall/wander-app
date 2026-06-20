@@ -30,30 +30,63 @@ export default function TripDetail({ trip }: { trip: Trip }) {
   }
   const statusStyle = statusColors[trip.status] ?? statusColors.planning
 
+  const nights = guidelines.nights ?? ''
+  const travelers = guidelines.travelersMax > guidelines.travelersMin
+    ? `${guidelines.travelersMin}–${guidelines.travelersMax}`
+    : `${guidelines.travelersMin}`
+
   return (
     <>
-      {/* Mountain banner */}
+      {/* Hero banner with back button overlay */}
       <div style={{ height: '200px', position: 'relative', overflow: 'hidden' }}>
         <MountainBanner />
+        <Link
+          href="/"
+          style={{ position: 'absolute', top: '48px', left: '18px', width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(251,247,240,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+          className="detail-back-btn"
+          aria-label="Back to trips"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M15 5 L8 12 L15 19" stroke="#2E2A24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
       </div>
 
       {/* Trip header */}
-      <div style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '28px 40px' }}>
-        <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <Link href="/" style={{ textDecoration: 'none' }}>
-                <span style={{ background: statusStyle.bg, color: statusStyle.color, borderRadius: '999px', padding: '5px 13px', fontSize: '12px', fontWeight: 600 }}>
-                  {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
-                </span>
-              </Link>
-              <span style={{ fontSize: '13px', color: 'var(--text3)' }}>{guidelines.destination}</span>
-            </div>
+      <div style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '22px 40px 28px' }}>
+        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <span style={{ background: statusStyle.bg, color: statusStyle.color, borderRadius: '999px', padding: '5px 13px', fontSize: '12px', fontWeight: 600 }}>
+                {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
+              </span>
+            </Link>
+            <span style={{ fontSize: '13px', color: 'var(--text3)' }}>{guidelines.destination}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px', flexWrap: 'wrap' }}>
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '34px', lineHeight: 1.05, letterSpacing: '-0.025em', margin: 0 }}>
               {plan.destination}
             </h1>
+            <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }} />
           </div>
-          <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }} />
+
+          {/* Info tiles — mobile shows these, desktop hides them */}
+          <div className="detail-info-tiles">
+            <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px' }}>
+              <div style={{ fontSize: '10.5px', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Dates</div>
+              <div style={{ fontSize: '13.5px', fontWeight: 600, marginTop: '3px' }}>{guidelines.targetMonthYear || guidelines.startDate || '—'}</div>
+            </div>
+            {nights && (
+              <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px' }}>
+                <div style={{ fontSize: '10.5px', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Nights</div>
+                <div style={{ fontSize: '13.5px', fontWeight: 600, marginTop: '3px' }}>{nights}</div>
+              </div>
+            )}
+            <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px' }}>
+              <div style={{ fontSize: '10.5px', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Party</div>
+              <div style={{ fontSize: '13.5px', fontWeight: 600, marginTop: '3px' }}>{travelers}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -69,6 +102,7 @@ export default function TripDetail({ trip }: { trip: Trip }) {
           top: '60px',
           zIndex: 99,
         }}
+        className="detail-tab-nav"
       >
         {(['overview', 'itinerary', 'bookings', 'food', 'tips'] as TabName[]).map((tab) => (
           <button
@@ -101,6 +135,17 @@ export default function TripDetail({ trip }: { trip: Trip }) {
         {activeTab === 'tips' && <TipsTab trip={trip} />}
       </div>
 
+      <style>{`
+        .detail-back-btn { display: none; }
+        .detail-info-tiles { display: none; gap: 10px; margin-top: 18px; }
+        .detail-tab-nav { top: 60px; }
+
+        @media (max-width: 768px) {
+          .detail-back-btn { display: flex !important; }
+          .detail-info-tiles { display: flex !important; }
+          .detail-tab-nav { top: 0; }
+        }
+      `}</style>
     </>
   )
 }

@@ -202,15 +202,21 @@ export default function PlanPage() {
   }
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '52px 24px 80px' }}>
+    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '52px 24px 80px' }} className="plan-page">
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '34px' }}>
-        <div style={{ fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600, marginBottom: '14px' }}>New trip</div>
+      <div style={{ marginBottom: '34px' }} className="plan-header">
+        <div style={{ fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600, marginBottom: '10px' }}>New trip</div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '40px', lineHeight: 1.05, letterSpacing: '-0.025em', margin: 0 }}>Where to next?</h1>
-        <p style={{ fontSize: '15.5px', color: 'var(--text2)', margin: '14px auto 0', maxWidth: '420px', lineHeight: 1.55 }}>
+        <p style={{ fontSize: '15.5px', color: 'var(--text2)', margin: '14px 0 0', lineHeight: 1.55 }}>
           Tell us the shape of it. We&apos;ll draft an itinerary you can shape together.
         </p>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .plan-page { padding-top: 28px !important; }
+          .plan-header h1 { font-size: 28px !important; }
+        }
+      `}</style>
 
       {/* Composer card */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '22px' }}>
