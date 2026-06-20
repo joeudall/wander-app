@@ -5,13 +5,17 @@ import { Trip } from '@/lib/schema'
 import Link from 'next/link'
 import Tag, { activityTagVariant } from '@/components/ui/Tag'
 
-const HEADER_COLORS: Record<string, string> = {
-  gold: 'linear-gradient(135deg, #c7a96b 0%, #8b6914 60%, #5c4410 100%)',
-  blue: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #3b82f6 100%)',
-  green: 'linear-gradient(135deg, #14532d 0%, #22c55e 100%)',
-  purple: 'linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%)',
-  orange: 'linear-gradient(135deg, #7c2d12 0%, #f97316 100%)',
-}
+const MountainBanner = () => (
+  <svg viewBox="0 0 1040 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ display: 'block' }}>
+    <rect width="1040" height="200" fill="#EFE6D6" />
+    <circle cx="150" cy="62" r="40" fill="#E7C6AC" />
+    <path d="M0 200 L210 56 L380 200 Z" fill="#A7AB92" />
+    <path d="M250 200 L520 18 L800 200 Z" fill="#838872" />
+    <path d="M488 78 L520 18 L554 78 L530 64 L520 78 L506 64 Z" fill="#F4EEE4" />
+    <path d="M620 200 L860 70 L1040 200 Z" fill="#BFC1AC" />
+    <rect y="182" width="1040" height="18" fill="#6E7460" />
+  </svg>
+)
 
 type TabName = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
 
@@ -19,44 +23,39 @@ export default function TripDetail({ trip }: { trip: Trip }) {
   const [activeTab, setActiveTab] = useState<TabName>('overview')
   const { plan, guidelines } = trip
 
-  const headerBg = HEADER_COLORS[trip.cardColor] ?? HEADER_COLORS.blue
-
-  const travelerText = guidelines.travelersMax > guidelines.travelersMin
-    ? `${guidelines.travelersMin}–${guidelines.travelersMax} people`
-    : `${guidelines.travelersMin} ${guidelines.travelersMin === 1 ? 'person' : 'people'}`
+  const statusColors: Record<string, { bg: string; color: string }> = {
+    upcoming: { bg: '#E3EDEC', color: '#265B5F' },
+    past: { bg: 'var(--surface3)', color: 'var(--text2)' },
+    planning: { bg: '#F0DFCC', color: '#9E5A37' },
+  }
+  const statusStyle = statusColors[trip.status] ?? statusColors.planning
 
   return (
     <>
-      {/* Header */}
-      <div style={{ background: headerBg, color: 'white', padding: '48px 24px 40px', position: 'relative' }}>
-        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-          <Link
-            href="/"
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              color: 'white',
-              padding: '7px 14px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              marginBottom: '20px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              textDecoration: 'none',
-            }}
-          >
-            ← Back to My Trips
-          </Link>
-          <h1 style={{ fontSize: '40px', fontWeight: 800, letterSpacing: '-0.5px', marginBottom: '8px' }}>
-            {trip.emoji} {plan.destination}
-          </h1>
-          <div style={{ fontSize: '16px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <span>📅 {guidelines.targetMonthYear} · {guidelines.nights} nights</span>
-            <span>👥 {travelerText}</span>
-            <span>✈️ {guidelines.departureAirport}</span>
+      {/* Mountain banner */}
+      <div style={{ height: '200px', position: 'relative', overflow: 'hidden' }}>
+        <MountainBanner />
+      </div>
+
+      {/* Trip header */}
+      <div style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '28px 40px' }}>
+        <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+              <Link href="/" style={{ textDecoration: 'none' }}>
+                <span style={{ background: statusStyle.bg, color: statusStyle.color, borderRadius: '999px', padding: '5px 13px', fontSize: '12px', fontWeight: 600 }}>
+                  {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
+                </span>
+              </Link>
+              <span style={{ fontSize: '13px', color: 'var(--text3)' }}>{guidelines.destination}</span>
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '34px', lineHeight: 1.05, letterSpacing: '-0.025em', margin: 0 }}>
+              {plan.destination}
+            </h1>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
+            <button style={{ background: 'transparent', color: 'var(--accent)', border: '1px solid var(--accent)', padding: '10px 18px', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Share</button>
+            <button style={{ background: 'var(--accent)', color: '#FBF7F0', border: 'none', padding: '11px 18px', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Edit trip</button>
           </div>
         </div>
       </div>
@@ -214,71 +213,33 @@ function ItineraryTab({ trip }: { trip: Trip }) {
     <div>
       {trip.plan.itinerary.map((day) => (
         <div key={day.dayNumber} style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-            <div
-              style={{
-                width: '44px',
-                height: '44px',
-                background: 'var(--accent)',
-                color: 'white',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '15px',
-                fontWeight: 800,
-                flexShrink: 0,
-              }}
-            >
+          {/* Day header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'var(--accent)', color: '#F4EEE4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-display)', flexShrink: 0 }}>
               {day.dayNumber}
             </div>
-            <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.2px' }}>{day.title}</h3>
-              {day.date && <p style={{ fontSize: '13px', color: 'var(--text2)' }}>{day.date}</p>}
-            </div>
+            <div style={{ fontWeight: 600, fontSize: '15px' }}>{day.title}</div>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+            {day.date && <div style={{ fontSize: '13px', color: 'var(--text3)', whiteSpace: 'nowrap' }}>{day.date}</div>}
           </div>
 
-          <div style={{ marginLeft: '60px', position: 'relative' }}>
-            <div style={{ position: 'absolute', left: '-38px', top: 0, bottom: 0, width: '2px', background: 'var(--border)' }} />
+          {/* Activities */}
+          <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: '20px', marginLeft: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {day.activities.map((activity, ai) => (
-              <div
-                key={ai}
-                style={{
-                  display: 'flex',
-                  gap: '14px',
-                  padding: '14px 0',
-                  borderBottom: ai < day.activities.length - 1 ? '1px solid var(--border)' : 'none',
-                  position: 'relative',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '-42px',
-                    top: '20px',
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: '50%',
-                    background: 'var(--accent)',
-                    border: '2px solid var(--surface)',
-                    boxShadow: '0 0 0 2px var(--accent)',
-                  }}
-                />
-                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', minWidth: '80px', paddingTop: '2px' }}>
-                  {activity.timeOfDay || ''}
+              <div key={ai} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px 18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ fontWeight: 600, fontSize: '15px' }}>{activity.name}</div>
+                  {activity.timeOfDay && <div style={{ fontSize: '13px', color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{activity.timeOfDay}</div>}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '2px' }}>{activity.name}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.45 }}>{activity.description}</div>
-                  {activity.cost && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>💰 {activity.cost}</div>}
-                  {activity.tags && activity.tags.length > 0 && (
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
-                      {activity.tags.map((tag) => (
-                        <Tag key={tag} variant={activityTagVariant(tag)}>{tag}</Tag>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '5px', lineHeight: 1.5 }}>{activity.description}</div>
+                {(activity.cost || (activity.tags && activity.tags.length > 0)) && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {activity.cost && <span style={{ fontSize: '12px', color: 'var(--text3)' }}>💰 {activity.cost}</span>}
+                    {activity.tags?.map((tag) => (
+                      <Tag key={tag} variant={activityTagVariant(tag)}>{tag}</Tag>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
