@@ -45,20 +45,20 @@ test('unauthenticated DELETE to share endpoint returns 401', async () => {
 test('trip detail page loads when logged in', async ({ page }) => {
   await loginAs(page)
   await page.goto(`/trips/${tripId}`)
-  await expect(page.getByText('Maui, Hawaii')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Maui, Hawaii' })).toBeVisible()
 })
 
 test('owner can share a trip via the comments panel', async ({ page }) => {
   await loginAs(page)
   await page.goto(`/trips/${tripId}`)
 
-  // The CommentsPanel has a "Share" button for the owner
-  const shareBtn = page.getByRole('button', { name: /share/i })
+  // Button text when unshared is "+ Share link"
+  const shareBtn = page.getByRole('button', { name: /\+ Share link/i })
   await expect(shareBtn).toBeVisible()
   await shareBtn.click()
 
-  // After sharing, confirm the UI reflects shared state
-  await expect(page.getByRole('button', { name: /unshare/i })).toBeVisible({ timeout: 5_000 })
+  // After sharing, button becomes "🔗 Shared — copy link"
+  await expect(page.getByRole('button', { name: /Shared — copy link/i })).toBeVisible({ timeout: 5_000 })
 })
 
 test('shared trip is accessible without login', async ({ page, context }) => {
@@ -66,7 +66,7 @@ test('shared trip is accessible without login', async ({ page, context }) => {
   await loginAs(page)
   const ctx = await request.newContext({ baseURL: BASE_URL })
   await page.goto(`/trips/${tripId}`)
-  const shareBtn = page.getByRole('button', { name: /^share$/i })
+  const shareBtn = page.getByRole('button', { name: /\+ Share link/i })
   if (await shareBtn.isVisible()) {
     await shareBtn.click()
     await page.waitForTimeout(500)
@@ -79,7 +79,7 @@ test('shared trip is accessible without login', async ({ page, context }) => {
   await guestPage.goto(`/trips/${tripId}`)
 
   // Public trip should show the destination, not redirect to login
-  await expect(guestPage.getByText('Maui, Hawaii')).toBeVisible({ timeout: 8_000 })
+  await expect(guestPage.getByRole('heading', { name: 'Maui, Hawaii' })).toBeVisible({ timeout: 8_000 })
   await guestContext.close()
 })
 
@@ -88,7 +88,7 @@ test('unshared trip redirects logged-out user to login', async ({ page, context 
   await loginAs(page)
   await page.goto(`/trips/${tripId}`)
 
-  const unshareBtn = page.getByRole('button', { name: /unshare/i })
+  const unshareBtn = page.getByRole('button', { name: /Shared — copy link/i })
   if (await unshareBtn.isVisible()) {
     await unshareBtn.click()
     await page.waitForTimeout(500)

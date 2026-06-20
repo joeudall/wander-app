@@ -28,7 +28,7 @@ test('dashboard shows logged-in user email', async ({ page }) => {
 })
 
 test('dashboard has Plan a trip button', async ({ page }) => {
-  await expect(page.getByRole('link', { name: /plan a trip/i })).toBeVisible()
+  await expect(page.getByRole('link', { name: /plan a trip/i }).first()).toBeVisible()
 })
 
 // ── Tabs ─────────────────────────────────────────────────────────────
@@ -55,14 +55,14 @@ test('Family tab renders without crashing', async ({ page }) => {
 // ── Plan wizard entry ────────────────────────────────────────────────
 
 test('clicking Plan a trip navigates to /plan', async ({ page }) => {
-  await page.getByRole('link', { name: /plan a trip/i }).click()
+  await page.getByRole('link', { name: /plan a trip/i }).first().click()
   await expect(page).toHaveURL('/plan')
 })
 
 test('plan page renders the trip wizard', async ({ page }) => {
   await page.goto('/plan')
   // The wizard has a destination field
-  await expect(page.getByPlaceholder(/destination/i)).toBeVisible()
+  await expect(page.getByPlaceholder(/Grand Teton|Spain|Tokyo/i)).toBeVisible()
 })
 
 // ── Empty state ──────────────────────────────────────────────────────

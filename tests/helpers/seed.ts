@@ -50,12 +50,13 @@ const SEED_GUIDELINES = {
 
 export async function seedTrip(userId: string): Promise<string> {
   const rows = await sql`
-    INSERT INTO trips (user_id, status, plan, guidelines)
+    INSERT INTO trips (user_id, status, plan, guidelines, is_public)
     VALUES (
       ${userId},
       'upcoming',
       ${JSON.stringify(SEED_PLAN)}::jsonb,
-      ${JSON.stringify(SEED_GUIDELINES)}::jsonb
+      ${JSON.stringify(SEED_GUIDELINES)}::jsonb,
+      FALSE
     )
     RETURNING id
   `

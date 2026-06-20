@@ -30,12 +30,11 @@ test('family tab loads without crashing', async ({ page }) => {
 })
 
 test('user without a family group sees setup UI', async ({ page }) => {
-  // The test user is fresh so likely has no family group
   await page.goto('/?tab=family')
 
-  // FamilySetup shows either the group creation form or existing group
-  const hasCreateOption = await page.getByText(/create/i).isVisible().catch(() => false)
-  const hasGroupName    = await page.getByText(/family/i).isVisible().catch(() => false)
+  // Check for the creation heading or an existing group heading
+  const hasCreateOption = await page.getByRole('heading', { name: /create a family group/i }).isVisible().catch(() => false)
+  const hasGroupName    = await page.getByRole('heading', { name: /family/i }).isVisible().catch(() => false)
 
   expect(hasCreateOption || hasGroupName).toBe(true)
 })
@@ -60,6 +59,6 @@ test('nav bar is visible on all authenticated pages', async ({ page }) => {
   for (const path of ['/', '/plan', '/?tab=family']) {
     await page.goto(path)
     // Nav component renders the Wander logo/name
-    await expect(page.getByText('Wander')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Wander' })).toBeVisible()
   }
 })
