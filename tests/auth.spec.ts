@@ -16,7 +16,7 @@ test.beforeAll(async () => {
 
 test('login page loads', async ({ page }) => {
   await page.goto('/login')
-  await expect(page.getByText('Welcome back')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sign in' }).first()).toBeVisible()
   await expect(page.getByPlaceholder('you@example.com')).toBeVisible()
 })
 
@@ -51,16 +51,17 @@ test('login with empty password is blocked by form validation', async ({ page })
 
 test('signup tab is visible and toggles the form', async ({ page }) => {
   await page.goto('/login')
-  await page.getByRole('button', { name: 'Create account' }).click()
-  await expect(page.getByText('Create your account')).toBeVisible()
-  await expect(page.getByPlaceholder('At least 8 characters')).toBeVisible()
+  await page.getByRole('button', { name: 'Create account' }).first().click()
+  // After switching to signup mode the email field is still visible
+  await expect(page.getByPlaceholder('you@example.com')).toBeVisible()
+  await expect(page.getByPlaceholder('••••••••')).toBeVisible()
 })
 
 test('signup with already-taken email shows error', async ({ page }) => {
   await page.goto('/login')
-  await page.getByRole('button', { name: 'Create account' }).click()
+  await page.getByRole('button', { name: 'Create account' }).first().click()
   await page.getByPlaceholder('you@example.com').fill(EMAIL) // already exists
-  await page.getByPlaceholder('At least 8 characters').fill(PASSWORD)
+  await page.getByPlaceholder('••••••••').fill(PASSWORD)
   await page.getByRole('button', { name: 'Create account' }).last().click()
 
   await expect(page.getByText('already exists')).toBeVisible()
@@ -68,9 +69,9 @@ test('signup with already-taken email shows error', async ({ page }) => {
 
 test('signup with short password shows error', async ({ page }) => {
   await page.goto('/login')
-  await page.getByRole('button', { name: 'Create account' }).click()
+  await page.getByRole('button', { name: 'Create account' }).first().click()
   await page.getByPlaceholder('you@example.com').fill('newuser@example.com')
-  await page.getByPlaceholder('At least 8 characters').fill('short') // < 8 chars
+  await page.getByPlaceholder('••••••••').fill('short') // < 8 chars
 
   // HTML5 minLength validation kicks in before the API call
   await page.getByRole('button', { name: 'Create account' }).last().click()

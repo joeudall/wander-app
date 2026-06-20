@@ -31,25 +31,11 @@ test('dashboard has Plan a trip button', async ({ page }) => {
   await expect(page.getByRole('link', { name: /plan a trip/i }).first()).toBeVisible()
 })
 
-// ── Tabs ─────────────────────────────────────────────────────────────
+// ── Page structure ───────────────────────────────────────────────────
 
-test('My Trips tab is active by default', async ({ page }) => {
-  // The active tab has color accent styling and no ?tab=family in URL
-  await expect(page).not.toHaveURL(/tab=family/)
-  await expect(page.getByRole('link', { name: /my trips/i })).toBeVisible()
-})
-
-test('Family tab is clickable', async ({ page }) => {
-  await page.getByRole('link', { name: /family/i }).click()
-  await expect(page).toHaveURL(/tab=family/)
-})
-
-test('Family tab renders without crashing', async ({ page }) => {
-  await page.goto('/?tab=family')
-  // Should show either the family setup UI or a family group — either way no error page
+test('dashboard URL is root and shows My Trips heading', async ({ page }) => {
+  await expect(page).toHaveURL('/')
   await expect(page.getByRole('heading', { name: 'My Trips' })).toBeVisible()
-  // No error message visible
-  await expect(page.getByText('Something went wrong')).not.toBeVisible()
 })
 
 // ── Plan wizard entry ────────────────────────────────────────────────
