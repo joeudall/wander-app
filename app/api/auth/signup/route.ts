@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'An account with that email already exists' }, { status: 409 })
   }
 
-  const hash = await bcrypt.hash(password, 12)
+  const hash = await bcrypt.hash(password, 10)
   await sql`INSERT INTO users (email, password_hash) VALUES (${email}, ${hash})`
 
   return NextResponse.json({ success: true })
