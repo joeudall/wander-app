@@ -95,3 +95,18 @@ CREATE INDEX IF NOT EXISTS family_members_group_id_idx ON family_members(group_i
 CREATE INDEX IF NOT EXISTS trip_shares_group_id_idx ON trip_shares(group_id);
 CREATE INDEX IF NOT EXISTS comments_trip_id_idx ON comments(trip_id);
 CREATE INDEX IF NOT EXISTS comment_reads_user_id_idx ON comment_reads(user_id);
+
+-- ============================================================
+-- Section 15 — Migrations
+-- ============================================================
+
+-- Allow Google OAuth users (no password)
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+
+-- Allow trips status 'taken'
+ALTER TABLE trips DROP CONSTRAINT IF EXISTS trips_status_check;
+ALTER TABLE trips ADD CONSTRAINT trips_status_check
+  CHECK (status IN ('upcoming', 'past', 'planning', 'taken'));
+
+-- Public link sharing
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;

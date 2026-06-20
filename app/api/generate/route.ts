@@ -28,12 +28,18 @@ export async function POST(req: NextRequest) {
   const stream = new TransformStream()
   const writer = stream.writable.getWriter()
 
-  const send = (event: string, data: unknown) => {
-    writer.write(encoder.encode(`data: ${JSON.stringify({ event, data })}\n\n`))
+  const send = async (event: string, data: unknown) => {
+    try {
+      await writer.write(encoder.encode(`data: ${JSON.stringify({ event, data })}\n\n`))
+    } catch {
+      // stream closed (client disconnected)
+    }
   }
 
   ;(async () => {
     try {
+      const session = await auth()
+
       const { destination, targetMonthYear, startDate, endDate, timeframeMode,
         departureAirport, drivingFrom, travelMode,
         domesticOrInternational, lodgingPrefs, interests, tripType } = guidelines
@@ -42,25 +48,34 @@ export async function POST(req: NextRequest) {
         ? `${startDate} to ${endDate}`
         : targetMonthYear
 
+      // Save a placeholder trip immediately so it's in the account even if the user navigates away
+      let tripId: string | null = null
+      if (session?.user?.id) {
+        const rows = await sql`
+          INSERT INTO trips (user_id, guidelines, plan, status, emoji, card_color)
+          VALUES (${session.user.id}, ${JSON.stringify(guidelines)}, '{}', 'planning', '🗺️', 'blue')
+          RETURNING id
+        `
+        tripId = rows[0]?.id ?? null
+      }
+      await send('started', { tripId })
+
       let travelResearch: string
       if (travelMode === 'drive') {
-        send('progress', { step: 1, label: 'Researching drive route…' })
+        await send('progress', { step: 1, label: 'Researching drive route…' })
         travelResearch = await webSearch(`drive from ${drivingFrom} to ${destination} time route tips stops`)
       } else {
-        send('progress', { step: 1, label: 'Researching flights…' })
+        await send('progress', { step: 1, label: 'Researching flights…' })
         travelResearch = await webSearch(`${departureAirport} to ${destination} flights ${timeframe} price range`)
       }
 
-      send('progress', { step: 2, label: 'Finding lodging options…' })
+      await send('progress', { step: 2, label: 'Finding lodging options…' })
       const lodgingResearch = await webSearch(`best ${lodgingPrefs.join(' ')} ${destination} ${timeframe} price per night`)
 
-      send('progress', { step: 3, label: 'Discovering activities…' })
+      await send('progress', { step: 3, label: 'Discovering activities…' })
       const activitiesResearch = await webSearch(`best things to do ${destination} with ${tripType} ${interests.slice(0, 3).join(' ')}`)
 
-      send('progress', { step: 4, label: 'Checking weather & seasonality…' })
-      const weatherResearch = await webSearch(`${destination} weather ${timeframe.split(' ')[0]} what to expect travel tips`)
-
-      send('progress', { step: 5, label: 'Building your trip plan…' })
+      await send('progress', { step: 4, label: 'Building your trip plan…' })
 
       const synthesis = await anthropic.messages.create({
         model: MODELS.synthesis,
@@ -70,7 +85,6 @@ export async function POST(req: NextRequest) {
           flights: travelResearch,
           lodging: lodgingResearch,
           activities: activitiesResearch,
-          weather: weatherResearch,
         })}],
       })
 
@@ -79,36 +93,33 @@ export async function POST(req: NextRequest) {
         .map((b) => (b as { type: 'text'; text: string }).text)
         .join('')
 
-      send('progress', { step: 6, label: 'Saving your trip…' })
+      await send('progress', { step: 5, label: 'Saving your trip…' })
 
       let plan
       try {
         const jsonMatch = planJson.match(/\{[\s\S]*\}/)
         plan = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(planJson)
       } catch {
-        send('error', { message: 'Failed to parse trip plan. Please try again.' })
-        await writer.close()
+        // Clean up the placeholder if we couldn't parse the plan
+        if (tripId) await sql`DELETE FROM trips WHERE id = ${tripId}`
+        await send('error', { message: 'Failed to parse trip plan. Please try again.' })
         return
       }
 
-      // Save to Neon
-      const session = await auth()
-      let savedTripId: string | null = null
-
-      if (session?.user?.id) {
-        const rows = await sql`
-          INSERT INTO trips (user_id, guidelines, plan, status, emoji, card_color)
-          VALUES (${session.user.id}, ${JSON.stringify(guidelines)}, ${JSON.stringify(plan)}, 'planning', '🗺️', 'blue')
-          RETURNING id
-        `
-        savedTripId = rows[0]?.id ?? null
+      // Update the placeholder with the real plan
+      if (tripId) {
+        await sql`UPDATE trips SET plan = ${JSON.stringify(plan)} WHERE id = ${tripId}`
       }
 
-      send('complete', { plan, tripId: savedTripId })
+      await send('complete', { plan, tripId })
     } catch (err) {
-      send('error', { message: err instanceof Error ? err.message : 'Generation failed' })
+      await send('error', { message: err instanceof Error ? err.message : 'Generation failed' })
     } finally {
-      await writer.close()
+      try {
+        await writer.close()
+      } catch {
+        // already closed
+      }
     }
   })()
 

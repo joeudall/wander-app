@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Trip } from '@/lib/schema'
+import { Trip, DestinationPlan } from '@/lib/schema'
 import Link from 'next/link'
 import Tag, { activityTagVariant } from '@/components/ui/Tag'
-import CommentsPanel from '@/components/family/CommentsPanel'
-import { kayakFlightUrl, bookingSearchUrl, platformAffiliateUrl, viatorActivityUrl } from '@/lib/affiliateLinks'
+import RefinementPanel from '@/components/trip/RefinementPanel'
 
 const MountainBanner = () => (
   <svg viewBox="0 0 1040 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ display: 'block' }}>
@@ -21,17 +20,26 @@ const MountainBanner = () => (
 
 type TabName = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
 
-interface TripDetailProps {
-  trip: Trip
-  isOwner?: boolean
-  isShared?: boolean
-  isLoggedIn?: boolean
-}
-
-export default function TripDetail({ trip, isOwner = false, isShared: initialShared = false, isLoggedIn = false }: TripDetailProps) {
+export default function TripDetail({ trip, isOwner = false }: { trip: Trip; isOwner?: boolean }) {
   const [activeTab, setActiveTab] = useState<TabName>('overview')
-  const [shared, setShared] = useState(initialShared)
-  const { plan, guidelines } = trip
+  const [plan, setPlan] = useState<DestinationPlan>(trip.plan)
+  const [isPublic, setIsPublic] = useState(trip.is_public ?? false)
+  const [copied, setCopied] = useState(false)
+  const { guidelines } = trip
+
+  const handleRefined = (section: Partial<DestinationPlan>) => {
+    setPlan((prev) => ({ ...prev, ...section }))
+  }
+
+  const handleShare = async () => {
+    if (!isPublic) {
+      await fetch(`/api/trips/${trip.id}/share`, { method: 'POST' })
+      setIsPublic(true)
+    }
+    navigator.clipboard.writeText(window.location.href)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }
 
   const statusColors: Record<string, { bg: string; color: string }> = {
     upcoming: { bg: '#E3EDEC', color: '#265B5F' },
@@ -40,36 +48,101 @@ export default function TripDetail({ trip, isOwner = false, isShared: initialSha
   }
   const statusStyle = statusColors[trip.status] ?? statusColors.planning
 
+  const nights = guidelines.nights ?? ''
+  const travelers = guidelines.travelersMax > guidelines.travelersMin
+    ? `${guidelines.travelersMin}–${guidelines.travelersMax}`
+    : `${guidelines.travelersMin}`
+
   return (
     <>
-      {/* Mountain banner */}
-      <div style={{ height: '200px', position: 'relative', overflow: 'hidden' }}>
+      {/* Hero banner with back button overlay */}
+      <div style={{ height: 'calc(200px + env(safe-area-inset-top, 0px))', position: 'relative', overflow: 'hidden' }}>
         <MountainBanner />
+        <Link
+          href="/trips"
+          style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', left: '18px', width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(251,247,240,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+          className="detail-back-btn"
+          aria-label="Back to trips"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M15 5 L8 12 L15 19" stroke="#2E2A24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
       </div>
 
       {/* Trip header */}
-      <div style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '28px 40px' }}>
-        <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <Link href="/" style={{ textDecoration: 'none' }}>
-                <span style={{ background: statusStyle.bg, color: statusStyle.color, borderRadius: '999px', padding: '5px 13px', fontSize: '12px', fontWeight: 600 }}>
-                  {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
-                </span>
-              </Link>
-              <span style={{ fontSize: '13px', color: 'var(--text3)' }}>{guidelines.destination}</span>
-            </div>
+      <div style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '22px 40px 28px' }}>
+        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <span style={{ background: statusStyle.bg, color: statusStyle.color, borderRadius: '999px', padding: '5px 13px', fontSize: '12px', fontWeight: 600 }}>
+                {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
+              </span>
+            </Link>
+            <span style={{ fontSize: '13px', color: 'var(--text3)' }}>{guidelines.destination}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px', flexWrap: 'wrap' }}>
             <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '34px', lineHeight: 1.05, letterSpacing: '-0.025em', margin: 0 }}>
               {plan.destination}
             </h1>
+            <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
+              {isOwner && (
+                <button
+                  onClick={handleShare}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    padding: '8px 14px',
+                    borderRadius: '999px',
+                    border: '1.5px solid var(--border)',
+                    background: copied ? 'var(--accent-light)' : isPublic ? 'var(--surface2)' : 'var(--surface)',
+                    color: copied ? 'var(--accent)' : 'var(--text2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {copied ? '✓ Link copied!' : isPublic ? (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      Shared — copy link
+                    </>
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      Share link
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-            {isOwner && (
-              <button style={{ background: 'var(--accent)', color: '#FBF7F0', border: 'none', padding: '11px 18px', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Edit trip</button>
+
+          {/* Info tiles — mobile shows these, desktop hides them */}
+          <div className="detail-info-tiles">
+            <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px' }}>
+              <div style={{ fontSize: '10.5px', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Dates</div>
+              <div style={{ fontSize: '13.5px', fontWeight: 600, marginTop: '3px' }}>{guidelines.targetMonthYear || guidelines.startDate || '—'}</div>
+            </div>
+            {nights && (
+              <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px' }}>
+                <div style={{ fontSize: '10.5px', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Nights</div>
+                <div style={{ fontSize: '13.5px', fontWeight: 600, marginTop: '3px' }}>{nights}</div>
+              </div>
             )}
-            {!isOwner && (
-              <span style={{ fontSize: '13px', color: 'var(--text3)', padding: '11px 0', fontStyle: 'italic' }}>View only</span>
-            )}
+            <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px' }}>
+              <div style={{ fontSize: '10.5px', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text3)' }}>Party</div>
+              <div style={{ fontSize: '13.5px', fontWeight: 600, marginTop: '3px' }}>{travelers}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -86,6 +159,7 @@ export default function TripDetail({ trip, isOwner = false, isShared: initialSha
           top: '60px',
           zIndex: 99,
         }}
+        className="detail-tab-nav"
       >
         {(['overview', 'itinerary', 'bookings', 'food', 'tips'] as TabName[]).map((tab) => (
           <button
@@ -111,22 +185,25 @@ export default function TripDetail({ trip, isOwner = false, isShared: initialSha
 
       {/* Content */}
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview' && <OverviewTab trip={trip} guidelines={trip.guidelines} />}
-        {activeTab === 'itinerary' && <ItineraryTab trip={trip} />}
-        {activeTab === 'bookings' && <BookingsTab trip={trip} />}
-        {activeTab === 'food' && <FoodTab trip={trip} />}
-        {activeTab === 'tips' && <TipsTab trip={trip} />}
+        {activeTab === 'overview' && <OverviewTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {activeTab === 'itinerary' && <ItineraryTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {activeTab === 'bookings' && <BookingsTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {activeTab === 'food' && <FoodTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {activeTab === 'tips' && <TipsTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
       </div>
 
-      {isLoggedIn && (
-        <CommentsPanel
-          tripId={trip.id}
-          isOwner={isOwner}
-          isShared={shared}
-          onShare={() => setShared(true)}
-          onUnshare={() => setShared(false)}
-        />
-      )}
+      <style>{`
+        .detail-back-btn { display: none; }
+        .detail-info-tiles { display: none; gap: 10px; margin-top: 18px; }
+        .detail-tab-nav { top: 60px; }
+
+        @media (max-width: 768px) {
+          .detail-back-btn { display: flex !important; }
+          .detail-info-tiles { display: flex !important; }
+          .detail-tab-nav { top: 0; }
+          .detail-hero { height: calc(200px + env(safe-area-inset-top, 0px)) !important; }
+        }
+      `}</style>
     </>
   )
 }
@@ -162,69 +239,48 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
   )
 }
 
-function OverviewTab({ trip, guidelines }: { trip: Trip; guidelines: Trip['guidelines'] }) {
-  const { plan } = trip
+function OverviewTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
         <InfoCard title="🌟 Highlights">
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', listStyle: 'none' }}>
-            {plan.highlights.map((h, i) => (
+            {(plan.highlights ?? []).map((h, i) => (
               <li key={i} style={{ fontSize: '14px', paddingLeft: '16px', borderLeft: '3px solid var(--accent)', lineHeight: 1.45 }}>{h}</li>
             ))}
           </ul>
         </InfoCard>
-        <InfoCard title="☁️ Weather">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
-            <div><strong>Avg Temp:</strong> {plan.weather.avgTemp}</div>
-            <div><strong>Rainfall:</strong> {plan.weather.rainfall}</div>
-            <div><strong>Crowds:</strong> {plan.weather.crowdLevel}</div>
-            <div style={{ color: 'var(--text2)', fontSize: '13px', marginTop: '4px' }}>{plan.weather.seasonalNotes}</div>
-          </div>
-        </InfoCard>
+        {plan.weather && (
+          <InfoCard title="☁️ Weather">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
+              <div><strong>Avg Temp:</strong> {plan.weather.avgTemp}</div>
+              <div><strong>Rainfall:</strong> {plan.weather.rainfall}</div>
+              <div><strong>Crowds:</strong> {plan.weather.crowdLevel}</div>
+              <div style={{ color: 'var(--text2)', fontSize: '13px', marginTop: '4px' }}>{plan.weather.seasonalNotes}</div>
+            </div>
+          </InfoCard>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
         <InfoCard title="✈️ Flights">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {plan.flights.map((f, i) => (
-              <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>{f.airline}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{f.priceRange} · {f.flightTime}</div>
-                  {f.notes && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{f.notes}</div>}
-                </div>
-                <a
-                  href={kayakFlightUrl(guidelines.departureAirport ?? '', guidelines.destination, guidelines.targetMonthYear)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#FF690F', color: '#fff', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
-                >
-                  Search Kayak ↗
-                </a>
+            {(plan.flights ?? []).map((f, i) => (
+              <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>{f.airline}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{f.priceRange} · {f.flightTime}</div>
+                {f.notes && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{f.notes}</div>}
               </div>
             ))}
           </div>
         </InfoCard>
         <InfoCard title="🏠 Lodging Options">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {plan.lodging.map((l, i) => (
+            {(plan.lodging ?? []).map((l, i) => (
               <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>{l.type}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{l.neighborhood} · {l.pricePerNight}</div>
-                    {l.notes && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{l.notes}</div>}
-                  </div>
-                  <a
-                    href={bookingSearchUrl(guidelines.destination)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#003580', color: '#fff', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
-                  >
-                    Booking.com ↗
-                  </a>
-                </div>
+                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>{l.type}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{l.neighborhood} · {l.pricePerNight}</div>
+                {l.notes && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{l.notes}</div>}
               </div>
             ))}
           </div>
@@ -250,14 +306,16 @@ function OverviewTab({ trip, guidelines }: { trip: Trip; guidelines: Trip['guide
           <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--accent)' }}>{plan.budget.total}</span>
         </div>
       </InfoCard>
+
+      <RefinementPanel tripId={tripId} tab="overview" onRefined={onRefined} />
     </>
   )
 }
 
-function ItineraryTab({ trip }: { trip: Trip }) {
+function ItineraryTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
   return (
     <div>
-      {trip.plan.itinerary.map((day) => (
+      {(plan.itinerary ?? []).map((day) => (
         <div key={day.dayNumber} style={{ marginBottom: '32px' }}>
           {/* Day header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
@@ -278,22 +336,12 @@ function ItineraryTab({ trip }: { trip: Trip }) {
                   {activity.timeOfDay && <div style={{ fontSize: '13px', color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{activity.timeOfDay}</div>}
                 </div>
                 <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '5px', lineHeight: 1.5 }}>{activity.description}</div>
-                {(activity.cost || (activity.tags && activity.tags.length > 0) || activity.bookingRequired) && (
+                {(activity.cost || (activity.tags && activity.tags.length > 0)) && (
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                     {activity.cost && <span style={{ fontSize: '12px', color: 'var(--text3)' }}>💰 {activity.cost}</span>}
                     {activity.tags?.map((tag) => (
                       <Tag key={tag} variant={activityTagVariant(tag)}>{tag}</Tag>
                     ))}
-                    {activity.bookingRequired && (
-                      <a
-                        href={viatorActivityUrl(activity.name, trip.guidelines.destination)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#328F79', color: '#fff', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', marginLeft: 'auto', whiteSpace: 'nowrap' }}
-                      >
-                        Book on Viator ↗
-                      </a>
-                    )}
                   </div>
                 )}
               </div>
@@ -301,11 +349,12 @@ function ItineraryTab({ trip }: { trip: Trip }) {
           </div>
         </div>
       ))}
+      <RefinementPanel tripId={tripId} tab="itinerary" onRefined={onRefined} />
     </div>
   )
 }
 
-function BookingsTab({ trip }: { trip: Trip }) {
+function BookingsTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table
@@ -342,20 +391,13 @@ function BookingsTab({ trip }: { trip: Trip }) {
           </tr>
         </thead>
         <tbody>
-          {trip.plan.bookings.map((b, i) => (
+          {(plan.bookings ?? []).map((b, i) => (
             <tr key={i}>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>{b.date}</td>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}><strong>{b.activity}</strong></td>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{b.time}</td>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                {(() => {
-                  const url = platformAffiliateUrl(b.platform, trip.guidelines.destination)
-                  return url ? (
-                    <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '12px', textDecoration: 'none', borderBottom: '1px solid var(--accent-light)' }}>
-                      {b.platform} ↗
-                    </a>
-                  ) : b.platform
-                })()}
+                {b.platform}
                 {b.reference && (
                   <><br /><code style={{ fontFamily: 'monospace', fontSize: '12px', background: 'var(--surface2)', padding: '2px 7px', borderRadius: '4px', color: 'var(--text2)' }}>{b.reference}</code></>
                 )}
@@ -365,17 +407,18 @@ function BookingsTab({ trip }: { trip: Trip }) {
           ))}
         </tbody>
       </table>
+      <RefinementPanel tripId={tripId} tab="bookings" onRefined={onRefined} />
     </div>
   )
 }
 
-function FoodTab({ trip }: { trip: Trip }) {
-  const { foodGuide } = trip.plan
+function FoodTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
+  const foodGuide = plan.foodGuide ?? { mustTry: [] }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
       <InfoCard title="🍽️ Must-Try Dishes">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {foodGuide.mustTry.map((item, i) => (
+          {(foodGuide.mustTry ?? []).map((item, i) => (
             <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
               <div style={{ fontSize: '14px', fontWeight: 700 }}>{item.name}</div>
               <div style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '2px' }}>{item.description}</div>
@@ -405,14 +448,17 @@ function FoodTab({ trip }: { trip: Trip }) {
           </div>
         )}
       </div>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <RefinementPanel tripId={tripId} tab="food" onRefined={onRefined} />
+      </div>
     </div>
   )
 }
 
-function TipsTab({ trip }: { trip: Trip }) {
+function TipsTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-      {trip.plan.tips.map((category, i) => (
+      {(plan.tips ?? []).map((category, i) => (
         <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             {category.icon} {category.category}
@@ -428,6 +474,9 @@ function TipsTab({ trip }: { trip: Trip }) {
           </div>
         </div>
       ))}
+      <div style={{ gridColumn: '1 / -1' }}>
+        <RefinementPanel tripId={tripId} tab="tips" onRefined={onRefined} />
+      </div>
     </div>
   )
 }

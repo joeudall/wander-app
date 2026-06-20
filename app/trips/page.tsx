@@ -4,7 +4,7 @@ import sql from '@/lib/db'
 import TripsDashboard from '@/components/trip/TripsDashboard'
 import { Trip } from '@/lib/schema'
 
-export default async function Dashboard() {
+export default async function TripsPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
 

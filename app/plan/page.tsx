@@ -12,12 +12,16 @@ const INTERESTS = [
   '⭐ Stargazing', '⛵ Water / Boating', '🌃 Nightlife', '🎡 Kid Activities', '⛳ Golf / Sports',
 ]
 
+const DIETARY_OPTIONS = [
+  '🥗 Vegetarian', '🌱 Vegan', '🌾 Gluten-free', '🥛 Dairy-free',
+  '🚫🍺 No alcohol', '🥜 Nut-free', '🍖 Halal', '✡️ Kosher',
+]
+
 const GEN_STEPS = [
   'Reading your preferences',
   'Researching travel options',
   'Finding lodging options',
   'Discovering activities',
-  'Checking weather & seasonality',
   'Building your trip plan',
   'Finalizing packing list & budget',
 ]
@@ -58,8 +62,11 @@ export default function PlanPage() {
   const router = useRouter()
 
   const [destination, setDestination] = useState('')
+  const [timeframeMode, setTimeframeMode] = useState<'flexible' | 'exact'>('flexible')
   const [targetMonthYear, setTargetMonthYear] = useState('')
   const [nights, setNights] = useState(7)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [travelersMin, setTravelersMin] = useState(2)
   const [travelersMax, setTravelersMax] = useState(4)
   const [tripType, setTripType] = useState<'family' | 'adults' | 'undecided'>('adults')
@@ -70,13 +77,14 @@ export default function PlanPage() {
   const [domesticOrInternational, setDomesticOrInternational] = useState<'domestic' | 'international'>('domestic')
   const [budgetStyle, setBudgetStyle] = useState<BudgetStyle>('mid')
   const [interests, setInterests] = useState<string[]>([])
-  const [dietaryNeeds] = useState<string[]>([])
+  const [dietaryNeeds, setDietaryNeeds] = useState<string[]>([])
   const [lodgingPrefs] = useState<string[]>([])
   const [freeTextNotes, setFreeTextNotes] = useState('')
 
   const [generating, setGenerating] = useState(false)
   const [genStep, setGenStep] = useState(0)
   const [genError, setGenError] = useState('')
+  const [savedTripId, setSavedTripId] = useState<string | null>(null)
 
   const budgetRanges = calcBudgetRanges(nights, travelersMin, travelersMax, domesticOrInternational)
 
@@ -86,6 +94,10 @@ export default function PlanPage() {
     setGenStep(0)
     setGenError('')
 
+    const exactNights = startDate && endDate
+      ? Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))
+      : nights
+
     const guidelines: TripGuidelines = {
       tripType,
       travelersMin,
@@ -93,9 +105,11 @@ export default function PlanPage() {
       kidsAges,
       planningStage: 'destination_selected',
       destination,
-      timeframeMode: 'flexible',
-      targetMonthYear,
-      nights,
+      timeframeMode,
+      targetMonthYear: timeframeMode === 'flexible' ? targetMonthYear : '',
+      nights: timeframeMode === 'exact' ? exactNights : nights,
+      startDate: timeframeMode === 'exact' ? startDate : undefined,
+      endDate: timeframeMode === 'exact' ? endDate : undefined,
       travelMode,
       departureAirport,
       drivingFrom,
@@ -126,7 +140,9 @@ export default function PlanPage() {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const parsed = JSON.parse(line.slice(6))
-          if (parsed.event === 'progress') setGenStep(parsed.data.step)
+          if (parsed.event === 'started') {
+            if (parsed.data.tripId) setSavedTripId(parsed.data.tripId)
+          } else if (parsed.event === 'progress') setGenStep(parsed.data.step)
           else if (parsed.event === 'complete') {
             if (parsed.data.tripId) router.push(`/trips/${parsed.data.tripId}`)
             else router.push('/')
@@ -163,6 +179,12 @@ export default function PlanPage() {
             <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }`}</style>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', marginBottom: '8px' }}>Building your trip plan…</h2>
             <p style={{ color: 'var(--text2)', fontSize: '15px' }}>Researching, planning, and putting it all together</p>
+            {savedTripId && (
+              <p style={{ fontSize: '13px', color: 'var(--text3)', marginTop: '10px' }}>
+                ✓ Saved to your account — safe to close this tab and check back on{' '}
+                <a href="/" style={{ color: 'var(--accent)', textDecoration: 'none' }}>My Trips</a>
+              </p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '32px', textAlign: 'left', maxWidth: '300px', margin: '32px auto 0' }}>
               {GEN_STEPS.map((label, i) => {
                 const n = i + 1
@@ -185,15 +207,21 @@ export default function PlanPage() {
   }
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '52px 24px 80px' }}>
+    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '52px 24px 80px' }} className="plan-page">
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '34px' }}>
-        <div style={{ fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600, marginBottom: '14px' }}>New trip</div>
+      <div style={{ marginBottom: '34px' }} className="plan-header">
+        <div style={{ fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600, marginBottom: '10px' }}>New trip</div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '40px', lineHeight: 1.05, letterSpacing: '-0.025em', margin: 0 }}>Where to next?</h1>
-        <p style={{ fontSize: '15.5px', color: 'var(--text2)', margin: '14px auto 0', maxWidth: '420px', lineHeight: 1.55 }}>
+        <p style={{ fontSize: '15.5px', color: 'var(--text2)', margin: '14px 0 0', lineHeight: 1.55 }}>
           Tell us the shape of it. We&apos;ll draft an itinerary you can shape together.
         </p>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .plan-page { padding-top: 28px !important; }
+          .plan-header h1 { font-size: 28px !important; }
+        }
+      `}</style>
 
       {/* Composer card */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '22px' }}>
@@ -210,30 +238,87 @@ export default function PlanPage() {
           />
         </Field>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <Field label="When">
-            <input
-              type="text"
-              placeholder="📅  August 2026"
-              value={targetMonthYear}
-              onChange={(e) => setTargetMonthYear(e.target.value)}
-              style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
-            />
-          </Field>
-          <Field label="Nights">
-            <input
-              type="number"
-              min={1}
-              value={nights}
-              onChange={(e) => setNights(Number(e.target.value))}
-              style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
-            />
-          </Field>
-        </div>
+        <Field label="When">
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            {(['flexible', 'exact'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setTimeframeMode(mode)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '100px',
+                  border: `1.5px solid ${timeframeMode === mode ? 'var(--accent)' : 'var(--border)'}`,
+                  background: timeframeMode === mode ? 'var(--accent-light)' : 'var(--surface2)',
+                  color: timeframeMode === mode ? 'var(--accent)' : 'var(--text2)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {mode === 'flexible' ? 'Flexible' : 'Exact dates'}
+              </button>
+            ))}
+          </div>
+          {timeframeMode === 'flexible' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <input
+                type="text"
+                placeholder="Month & year (e.g. August 2026)"
+                value={targetMonthYear}
+                onChange={(e) => setTargetMonthYear(e.target.value)}
+                style={inputStyle}
+                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="number"
+                  min={1}
+                  value={nights}
+                  onChange={(e) => setNights(Number(e.target.value))}
+                  style={{ ...inputStyle, paddingRight: '52px' }}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+                <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: 'var(--text3)', pointerEvents: 'none' }}>nights</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '5px', fontWeight: 500 }}>Start</div>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '5px', fontWeight: 500 }}>
+                  End
+                  {startDate && endDate && new Date(endDate) > new Date(startDate) && (
+                    <span style={{ marginLeft: '6px', color: 'var(--accent)' }}>
+                      · {Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000)} nights
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+            </div>
+          )}
+        </Field>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <Field label="Travelers">
@@ -343,6 +428,14 @@ export default function PlanPage() {
             options={INTERESTS.map((i) => ({ label: i }))}
             selected={interests}
             onChange={setInterests}
+          />
+        </Field>
+
+        <Field label="Dietary needs">
+          <TagPicker
+            options={DIETARY_OPTIONS.map((d) => ({ label: d }))}
+            selected={dietaryNeeds}
+            onChange={setDietaryNeeds}
           />
         </Field>
 

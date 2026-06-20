@@ -1,11 +1,20 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Nav from '@/components/ui/Nav'
+import MobileNav from '@/components/ui/MobileNav'
 import Providers from '@/components/ui/Providers'
+import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export const metadata: Metadata = {
   title: 'Wander — AI-Powered Trip Planning',
   description: 'Dream it and point you in the right direction. AI-powered trip planning for friends and family.',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,12 +22,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers>
-          <Nav />
+          <div className="top-nav">
+            <Nav />
+          </div>
           <main>{children}</main>
-          <footer style={{ padding: '24px 40px', borderTop: '1px solid var(--border)', fontSize: '12px', color: 'var(--text3)', textAlign: 'center' }}>
-            This site contains affiliate links. We may earn a small commission if you book through them — at no extra cost to you. It helps keep Wander free.
-          </footer>
+          <MobileNav />
         </Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

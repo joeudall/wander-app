@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -21,36 +21,64 @@ const MountainBg = () => (
   </svg>
 )
 
-export default function LoginPage() {
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 48 48">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    <path fill="none" d="M0 0h48v48H0z"/>
+  </svg>
+)
+
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [signupMessage, setSignupMessage] = useState('')
+
+  // Reset state when switching modes
+  useEffect(() => {
+    setError('')
+    setSignupMessage('')
+  }, [mode])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setSignupMessage('')
     setLoading(true)
 
     try {
       if (mode === 'signup') {
+        setSignupMessage('Creating your account…')
         const res = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         })
         const data = await res.json()
-        if (!res.ok) { setError(data.error); setLoading(false); return }
+        if (!res.ok) {
+          setError(data.error)
+          setLoading(false)
+          setSignupMessage('')
+          return
+        }
+        setSignupMessage('Account created — signing you in…')
       }
 
       const result = await signIn('credentials', { email, password, redirect: false })
       if (result?.error) {
         setError('Invalid email or password')
         setLoading(false)
+        setSignupMessage('')
         return
       }
       router.push(callbackUrl)
@@ -58,18 +86,13 @@ export default function LoginPage() {
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
+      setSignupMessage('')
     }
   }
 
-  async function handleGoogleSignIn() {
+  async function handleGoogle() {
+    setGoogleLoading(true)
     await signIn('google', { callbackUrl })
-  }
-
-  function switchMode(next: 'login' | 'signup') {
-    setMode(next)
-    setError('')
-    setEmail('')
-    setPassword('')
   }
 
   const labelStyle: React.CSSProperties = {
@@ -95,11 +118,9 @@ export default function LoginPage() {
     transition: 'border-color 0.15s, box-shadow 0.15s',
   }
 
-  const isSignup = mode === 'signup'
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'stretch', background: '#F4EEE4' }}>
-      {/* Brand panel */}
+      {/* Brand panel — desktop only */}
       <div style={{ width: '440px', flexShrink: 0, position: 'relative', overflow: 'hidden', display: 'none' }} className="login-brand-panel">
         <MountainBg />
         <div style={{ position: 'relative', padding: '44px', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -119,35 +140,32 @@ export default function LoginPage() {
       </div>
 
       {/* Form panel */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 24px' }}>
-        <div style={{ width: '100%', maxWidth: '340px' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 24px' }} className="login-form-panel">
+        <div className="login-mobile-bg" style={{ display: 'none', position: 'absolute', inset: 0, zIndex: 0 }}>
+          <MountainBg />
+        </div>
+        <div style={{ width: '100%', maxWidth: '340px', position: 'relative', zIndex: 1 }} className="login-form-inner">
 
-          {/* Tab toggle */}
-          <div style={{
-            display: 'flex',
-            background: '#EBE4D8',
-            borderRadius: '12px',
-            padding: '4px',
-            marginBottom: '28px',
-          }}>
+          {/* Tab switcher */}
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.06)', borderRadius: '12px', padding: '4px', marginBottom: '28px' }}>
             {(['login', 'signup'] as const).map((m) => (
               <button
                 key={m}
                 type="button"
-                onClick={() => switchMode(m)}
+                onClick={() => setMode(m)}
                 style={{
                   flex: 1,
                   padding: '9px',
                   borderRadius: '9px',
                   border: 'none',
+                  background: mode === m ? '#FBF7F0' : 'transparent',
+                  color: mode === m ? '#2E2A24' : '#998f7c',
                   fontSize: '14px',
                   fontWeight: 600,
-                  fontFamily: 'inherit',
                   cursor: 'pointer',
-                  transition: 'background 0.15s, color 0.15s, box-shadow 0.15s',
-                  background: mode === m ? '#fff' : 'transparent',
-                  color: mode === m ? '#2E2A24' : '#998f7c',
-                  boxShadow: mode === m ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
+                  fontFamily: 'inherit',
+                  boxShadow: mode === m ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                  transition: 'all 0.15s',
                 }}
               >
                 {m === 'login' ? 'Sign in' : 'Create account'}
@@ -155,52 +173,43 @@ export default function LoginPage() {
             ))}
           </div>
 
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', margin: '0 0 6px' }}>
-            {isSignup ? 'Create your account' : 'Welcome back'}
-          </h2>
-          <p style={{ fontSize: '14.5px', color: 'var(--text2)', margin: '0 0 24px' }}>
-            {isSignup ? 'Start planning your next adventure.' : 'Sign in to pick up where you left off.'}
-          </p>
-
-          {/* Google SSO */}
+          {/* Google button */}
           <button
             type="button"
-            onClick={handleGoogleSignIn}
+            onClick={handleGoogle}
+            disabled={googleLoading || loading}
             style={{
               width: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '10px',
-              background: '#fff',
-              border: '1.5px solid #E6DBC9',
-              borderRadius: '10px',
-              padding: '13px',
-              fontSize: '15px',
-              fontWeight: 600,
+              background: '#FBF7F0',
               color: '#2E2A24',
-              cursor: 'pointer',
+              border: '1px solid #E6DBC9',
+              borderRadius: '10px',
+              padding: '12px',
+              fontSize: '14.5px',
+              fontWeight: 600,
+              cursor: googleLoading || loading ? 'not-allowed' : 'pointer',
+              opacity: googleLoading || loading ? 0.7 : 1,
               fontFamily: 'inherit',
               marginBottom: '20px',
+              transition: 'background 0.15s',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 18 18">
-              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
-              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-              <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
-              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
-            </svg>
-            {isSignup ? 'Sign up with Google' : 'Continue with Google'}
+            <GoogleIcon />
+            {googleLoading ? 'Redirecting…' : 'Continue with Google'}
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
             <div style={{ flex: 1, height: '1px', background: '#E6DBC9' }} />
-            <span style={{ fontSize: '12px', color: '#998f7c', fontWeight: 600, letterSpacing: '0.05em' }}>OR</span>
+            <span style={{ fontSize: '12px', color: '#998f7c', fontWeight: 500 }}>or</span>
             <div style={{ flex: 1, height: '1px', background: '#E6DBC9' }} />
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '18px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>Email</label>
               <input
                 type="email"
@@ -214,10 +223,10 @@ export default function LoginPage() {
               />
             </div>
 
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '22px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
                 <label style={{ ...labelStyle, marginBottom: 0 }}>Password</label>
-                {!isSignup && (
+                {mode === 'login' && (
                   <span style={{ fontSize: '12.5px', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' }}>Forgot?</span>
                 )}
               </div>
@@ -227,12 +236,18 @@ export default function LoginPage() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={isSignup ? 'At least 8 characters' : '••••••••'}
+                placeholder="••••••••"
                 style={inputStyle}
                 onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
                 onBlur={(e) => { e.target.style.borderColor = '#E6DBC9'; e.target.style.boxShadow = 'none' }}
               />
             </div>
+
+            {signupMessage && !error && (
+              <div style={{ fontSize: '13px', color: 'var(--accent)', padding: '10px 12px', background: 'var(--accent-light)', borderRadius: '8px', marginBottom: '16px' }}>
+                {signupMessage}
+              </div>
+            )}
 
             {error && (
               <div style={{ fontSize: '13px', color: 'var(--red)', padding: '10px 12px', background: 'var(--red-light)', borderRadius: '8px', marginBottom: '16px' }}>
@@ -245,7 +260,7 @@ export default function LoginPage() {
               disabled={loading}
               style={{
                 width: '100%',
-                background: isSignup ? '#3a7a6e' : 'var(--accent)',
+                background: 'var(--accent)',
                 color: '#FBF7F0',
                 border: 'none',
                 padding: '14px',
@@ -255,29 +270,14 @@ export default function LoginPage() {
                 fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
-                boxShadow: isSignup
-                  ? '0 6px 16px rgba(58,122,110,.28)'
-                  : '0 6px 16px rgba(47,110,115,.22)',
+                boxShadow: '0 6px 16px rgba(47,110,115,.22)',
               }}
             >
               {loading
-                ? (isSignup ? 'Creating account…' : 'Signing in…')
-                : (isSignup ? 'Create account' : 'Sign in')}
+                ? (mode === 'signup' ? 'Creating account…' : 'Signing in…')
+                : (mode === 'login' ? 'Sign in' : 'Create account')}
             </button>
-
-            {loading && isSignup && (
-              <div style={{
-                marginTop: '14px',
-                textAlign: 'center',
-                fontSize: '13.5px',
-                color: '#998f7c',
-                lineHeight: 1.5,
-              }}>
-                Please be patient — this can take a few seconds.
-              </div>
-            )}
           </form>
-
         </div>
       </div>
 
@@ -285,7 +285,45 @@ export default function LoginPage() {
         @media (min-width: 768px) {
           .login-brand-panel { display: block !important; }
         }
+        @media (max-width: 767px) {
+          .login-form-panel {
+            background: #2E2A24 !important;
+            position: relative;
+            overflow: hidden;
+          }
+          .login-form-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(46,42,36,0) 40%, rgba(46,42,36,.9) 65%, #2E2A24 82%);
+            pointer-events: none;
+            z-index: 0;
+          }
+          .login-form-inner {
+            position: relative;
+            z-index: 1;
+          }
+          .login-form-inner h2 { color: #F4EEE4 !important; }
+          .login-form-inner p { color: #b8b1a3 !important; }
+          .login-form-inner label { color: #8e887c !important; }
+          .login-form-inner input {
+            background: #3a352d !important;
+            border-color: #4a443b !important;
+            color: #F4EEE4 !important;
+          }
+          .login-mobile-bg {
+            display: block !important;
+          }
+        }
       `}</style>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

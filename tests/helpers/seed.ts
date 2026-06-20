@@ -67,6 +67,10 @@ export async function deleteSeedTrip(tripId: string) {
   await sql`DELETE FROM trips WHERE id = ${tripId}`
 }
 
+export async function unshareTrip(tripId: string) {
+  await sql`UPDATE trips SET is_public = FALSE WHERE id = ${tripId}`
+}
+
 export async function getTestUserId(email: string): Promise<string | null> {
   const rows = await sql`SELECT id FROM users WHERE email = ${email} LIMIT 1`
   return rows[0] ? String(rows[0].id) : null
