@@ -108,7 +108,13 @@ Produce a complete trip plan as a JSON object matching this exact TypeScript int
     "time": string,
     "platform": string,
     "reference": string,
-    "notes": string
+    "notes": string,
+    "alternatives": [{
+      "activity": string,
+      "description": string (1 sentence, practical),
+      "cost": string,
+      "platform": string
+    }] (3–5 alternative activities or experiences for the same time slot)
   }]
 }
 
@@ -153,7 +159,7 @@ const SECTION_SCHEMAS: Record<string, string> = {
   lodging: `"lodging": [{ "type": string, "pricePerNight": string, "neighborhood": string, "notes": string }]`,
   budget: `"budget": { "flights": string, "lodging": string, "food": string, "activities": string, "total": string }`,
   itinerary: `"itinerary": [{ "dayNumber": number, "date": string, "title": string, "activities": [{ "name": string, "description": string, "timeOfDay": string, "duration": string, "cost": string, "kidFriendly": boolean, "bookingRequired": boolean, "tags": string[] }] }]`,
-  bookings: `"bookings": [{ "date": string, "activity": string, "time": string, "platform": string, "reference": string, "notes": string }]`,
+  bookings: `"bookings": [{ "date": string, "activity": string, "time": string, "platform": string, "reference": string, "notes": string, "alternatives": [{ "activity": string, "description": string, "cost": string, "platform": string }] }]`,
   foodGuide: `"foodGuide": { "mustTry": [{ "name": string, "description": string, "kidFriendly": boolean, "dietaryNotes": string }], "mealTimes": string, "kidFriendlyPicks": string[], "dietaryNotes": string }`,
   tips: `"tips": [{ "category": string, "icon": string, "tips": string[] }]`,
 }

@@ -117,6 +117,12 @@ export interface DestinationPlan {
     platform: string
     reference?: string
     notes: string
+    alternatives?: Array<{
+      activity: string
+      description: string
+      cost?: string
+      platform?: string
+    }>
   }>
 }
 

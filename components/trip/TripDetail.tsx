@@ -355,6 +355,17 @@ function ItineraryTab({ plan, tripId, onRefined }: { plan: DestinationPlan; trip
 }
 
 function BookingsTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: string; onRefined: (s: Partial<DestinationPlan>) => void }) {
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
+
+  const toggleRow = (i: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
+      return next
+    })
+  }
+
   return (
     <div style={{ overflowX: 'auto' }}>
       <table
@@ -368,6 +379,13 @@ function BookingsTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripI
           fontSize: '14px',
         }}
       >
+        <colgroup>
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '24%' }} />
+          <col style={{ width: '32%' }} />
+        </colgroup>
         <thead>
           <tr>
             {['Date', 'Activity', 'Time', 'Platform / Ref', 'Notes'].map((h) => (
@@ -391,20 +409,90 @@ function BookingsTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripI
           </tr>
         </thead>
         <tbody>
-          {(plan.bookings ?? []).map((b, i) => (
-            <tr key={i}>
-              <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>{b.date}</td>
-              <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}><strong>{b.activity}</strong></td>
-              <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{b.time}</td>
-              <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                {b.platform}
-                {b.reference && (
-                  <><br /><code style={{ fontFamily: 'monospace', fontSize: '12px', background: 'var(--surface2)', padding: '2px 7px', borderRadius: '4px', color: 'var(--text2)' }}>{b.reference}</code></>
+          {(plan.bookings ?? []).map((b, i) => {
+            const hasAlts = b.alternatives && b.alternatives.length > 0
+            const isExpanded = expandedRows.has(i)
+            const isLast = i === (plan.bookings ?? []).length - 1
+
+            return (
+              <>
+                <tr key={`booking-${i}`}>
+                  <td style={{ padding: '14px 16px', borderBottom: hasAlts && isExpanded ? 'none' : '1px solid var(--border)', verticalAlign: 'top' }}>{b.date}</td>
+                  <td style={{ padding: '14px 16px', borderBottom: hasAlts && isExpanded ? 'none' : '1px solid var(--border)', verticalAlign: 'top' }}>
+                    <strong>{b.activity}</strong>
+                    {hasAlts && (
+                      <button
+                        onClick={() => toggleRow(i)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          marginTop: '6px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: 'var(--accent)',
+                          background: 'var(--accent-light)',
+                          border: 'none',
+                          borderRadius: '999px',
+                          padding: '3px 8px',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {isExpanded ? '▲' : '▼'} {b.alternatives!.length} alternatives
+                      </button>
+                    )}
+                  </td>
+                  <td style={{ padding: '14px 16px', borderBottom: hasAlts && isExpanded ? 'none' : '1px solid var(--border)', verticalAlign: 'top' }}>{b.time}</td>
+                  <td style={{ padding: '14px 16px', borderBottom: hasAlts && isExpanded ? 'none' : '1px solid var(--border)', verticalAlign: 'top' }}>
+                    {b.platform}
+                    {b.reference && (
+                      <><br /><code style={{ fontFamily: 'monospace', fontSize: '12px', background: 'var(--surface2)', padding: '2px 7px', borderRadius: '4px', color: 'var(--text2)' }}>{b.reference}</code></>
+                    )}
+                  </td>
+                  <td style={{ padding: '14px 16px', borderBottom: hasAlts && isExpanded ? 'none' : '1px solid var(--border)', verticalAlign: 'top', color: 'var(--text2)' }}>{b.notes}</td>
+                </tr>
+                {hasAlts && isExpanded && (
+                  <tr key={`alts-${i}`}>
+                    <td
+                      colSpan={5}
+                      style={{
+                        padding: '0 16px 16px',
+                        borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                        background: 'var(--surface)',
+                      }}
+                    >
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                        Also consider for this slot
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {b.alternatives!.map((alt, j) => (
+                          <div
+                            key={j}
+                            style={{
+                              flex: '1 1 200px',
+                              maxWidth: '280px',
+                              background: 'var(--surface2)',
+                              border: '1px solid var(--border)',
+                              borderRadius: '10px',
+                              padding: '12px 14px',
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>{alt.activity}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text2)', lineHeight: 1.4, marginBottom: '6px' }}>{alt.description}</div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              {alt.cost && <span style={{ fontSize: '11px', color: 'var(--text3)' }}>💰 {alt.cost}</span>}
+                              {alt.platform && <span style={{ fontSize: '11px', color: 'var(--text3)' }}>📍 {alt.platform}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
                 )}
-              </td>
-              <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', color: 'var(--text2)' }}>{b.notes}</td>
-            </tr>
-          ))}
+              </>
+            )
+          })}
         </tbody>
       </table>
       <RefinementPanel tripId={tripId} tab="bookings" onRefined={onRefined} />
