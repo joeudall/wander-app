@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import LogoutButton from '@/components/ui/LogoutButton'
 
 export default function Nav() {
   const pathname = usePathname()
@@ -11,7 +12,7 @@ export default function Nav() {
       style={{
         background: 'var(--surface)',
         borderBottom: '1px solid var(--border)',
-        padding: '0 24px',
+        padding: '0 32px',
         display: 'flex',
         alignItems: 'center',
         height: '60px',
@@ -24,19 +25,20 @@ export default function Nav() {
       <Link
         href="/"
         style={{
-          fontSize: '18px',
+          fontFamily: 'var(--font-display)',
+          fontSize: '20px',
           fontWeight: 700,
-          letterSpacing: '-0.3px',
-          color: 'var(--text)',
+          letterSpacing: '-0.03em',
+          color: 'var(--accent)',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
           textDecoration: 'none',
         }}
       >
-        ✈️ <span style={{ color: 'var(--accent)' }}>Trip</span>Planner
+        Wander
       </Link>
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
         <NavBtn href="/" active={pathname === '/'}>My Trips</NavBtn>
         <NavBtn href="/plan" active={pathname === '/plan'}>Plan a Trip</NavBtn>
         <Link
@@ -45,7 +47,7 @@ export default function Nav() {
             background: 'var(--accent)',
             color: 'white',
             border: 'none',
-            padding: '8px 16px',
+            padding: '8px 18px',
             borderRadius: 'var(--radius-sm)',
             fontSize: '14px',
             fontWeight: 600,
@@ -54,10 +56,14 @@ export default function Nav() {
             textDecoration: 'none',
             display: 'inline-flex',
             alignItems: 'center',
+            letterSpacing: '0.01em',
           }}
         >
           + New Trip
         </Link>
+        <div style={{ marginLeft: '12px', paddingLeft: '12px', borderLeft: '1px solid var(--border)' }}>
+          <LogoutButton />
+        </div>
       </div>
     </nav>
   )

@@ -3,7 +3,7 @@ import './globals.css'
 import Nav from '@/components/ui/Nav'
 
 export const metadata: Metadata = {
-  title: 'TripPlanner — AI-Powered Travel Plans',
+  title: 'Wander — AI-Powered Trip Planning',
   description: 'Dream it and point you in the right direction. AI-powered trip planning for friends and family.',
 }
 
