@@ -125,3 +125,76 @@ export const SYNTHESIS_SYSTEM = `You are a trip planning expert. You produce det
 export function buildResearchPrompt(query: string): string {
   return `Search for: ${query}\n\nExtract the key facts in 3–5 bullet points. Be specific with numbers (prices, times, distances). Note anything uncertain.`
 }
+
+export type RefinementTab = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
+
+// Keys of DestinationPlan that each tab owns
+export const TAB_SECTION_KEYS: Record<RefinementTab, string[]> = {
+  overview: ['highlights', 'weather', 'flights', 'lodging', 'budget'],
+  itinerary: ['itinerary'],
+  bookings: ['bookings'],
+  food: ['foodGuide'],
+  tips: ['tips'],
+}
+
+const TAB_SCHEMAS: Record<RefinementTab, string> = {
+  overview: `{
+  "highlights": string[],
+  "weather": { "avgTemp": string, "rainfall": string, "crowdLevel": string, "seasonalNotes": string },
+  "flights": [{ "airline": string, "priceRange": string, "flightTime": string, "notes": string }],
+  "lodging": [{ "type": string, "pricePerNight": string, "neighborhood": string, "notes": string }],
+  "budget": { "flights": string, "lodging": string, "food": string, "activities": string, "total": string }
+}`,
+  itinerary: `{
+  "itinerary": [{
+    "dayNumber": number, "date": string, "title": string,
+    "activities": [{ "name": string, "description": string, "timeOfDay": string, "duration": string, "cost": string, "kidFriendly": boolean, "bookingRequired": boolean, "tags": string[] }]
+  }]
+}`,
+  bookings: `{
+  "bookings": [{ "date": string, "activity": string, "time": string, "platform": string, "reference": string, "notes": string }]
+}`,
+  food: `{
+  "foodGuide": {
+    "mustTry": [{ "name": string, "description": string, "kidFriendly": boolean, "dietaryNotes": string }],
+    "mealTimes": string, "kidFriendlyPicks": string[], "dietaryNotes": string
+  }
+}`,
+  tips: `{
+  "tips": [{ "category": string, "icon": string, "tips": string[] }]
+}`,
+}
+
+export function buildRefinementPrompt(
+  tab: RefinementTab,
+  destination: string,
+  guidelines: TripGuidelines,
+  currentSection: Record<string, unknown>,
+  suggestion: string,
+): string {
+  const { tripType, travelersMin, travelersMax, kidsAges, targetMonthYear, budgetStyle, interests } = guidelines
+  const travelerCount = travelersMax > travelersMin ? `${travelersMin}–${travelersMax}` : `${travelersMin}`
+  const composition = tripType === 'family' && kidsAges.length > 0
+    ? `family with kids ages ${kidsAges.join(', ')}`
+    : tripType === 'adults' ? 'adults only' : 'mixed group'
+
+  return `Trip: ${destination} | ${travelerCount} travelers (${composition}) | ${targetMonthYear} | Budget: ${budgetStyle} | Interests: ${interests.join(', ')}
+
+The user wants to refine the "${tab}" section of their trip plan.
+User's request: "${suggestion}"
+
+Current ${tab} data:
+${JSON.stringify(currentSection, null, 2)}
+
+Return ONLY valid JSON with the exact same top-level keys, updated to reflect the user's request.
+Required schema:
+${TAB_SCHEMAS[tab]}
+
+Rules:
+- Keep all cost/price values as ranges, not single numbers
+- Preserve the number of items unless the user's request implies adding/removing
+- Activity tags must come from: ["transit", "culture", "food", "free", "booking", "nature", "adventure"]
+- Return ONLY the JSON, no markdown fences, no explanation`
+}
+
+export const REFINEMENT_SYSTEM = `You are a trip planning expert making targeted updates to a specific section of an existing trip plan. You receive the current section data and the user's refinement request. Maintain consistency with the trip's overall style and destination. Output only valid JSON.`
