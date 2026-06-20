@@ -4,6 +4,7 @@ import Nav from '@/components/ui/Nav'
 import MobileNav from '@/components/ui/MobileNav'
 import Providers from '@/components/ui/Providers'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export const metadata: Metadata = {
   title: 'Wander — AI-Powered Trip Planning',
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileNav />
         </Providers>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
