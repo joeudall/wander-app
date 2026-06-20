@@ -15,9 +15,14 @@ export interface TripGuidelines {
   // Step 2 — When & Where
   planningStage: PlanningStage
   destination: string
-  targetMonthYear: string
-  nights: number
-  departureAirport: string
+  timeframeMode: 'flexible' | 'exact'
+  targetMonthYear: string   // flexible mode
+  nights: number            // flexible mode
+  startDate?: string        // exact mode
+  endDate?: string          // exact mode
+  travelMode: 'fly' | 'drive'
+  departureAirport: string  // fly mode
+  drivingFrom?: string      // drive mode
   domesticOrInternational: TripDomesticType
 
   // Step 3 — Style
@@ -123,4 +128,34 @@ export interface Trip {
   createdAt: string
   cardColor: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
   emoji: string
+  groupId?: string
+}
+
+// Section 14 — Collaboration
+
+export interface FamilyGroup {
+  id: string
+  name: string
+  createdBy: string
+  createdAt: string
+}
+
+export interface Member {
+  userId: string
+  email: string
+  role: 'owner' | 'member'
+  joinedAt: string
+}
+
+export interface Comment {
+  id: string
+  tripId: string
+  userId: string
+  authorEmail: string
+  body: string
+  referenceType: 'trip' | 'day' | 'activity'
+  referenceId?: string
+  createdAt: string
+  updatedAt?: string
+  isRead: boolean
 }

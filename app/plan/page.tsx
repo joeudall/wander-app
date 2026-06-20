@@ -1,109 +1,119 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import WizardProgress from '@/components/wizard/WizardProgress'
-import {
-  WizardCard,
-  WizardButton,
-  FormGroup,
-  FormInput,
-  FormTextarea,
-  ChoiceCard,
-  RadioOption,
-  TagPicker,
-} from '@/components/wizard/WizardShell'
-import { TripGuidelines, TripType, BudgetStyle } from '@/lib/schema'
+import { TripGuidelines, BudgetStyle } from '@/lib/schema'
 import { calcBudgetRanges } from '@/lib/budget'
+import { TagPicker, KidsPillInput } from '@/components/wizard/WizardShell'
 
 const INTERESTS = [
   '🥾 Hiking', '🦁 Wildlife', '📸 Photography', '🏖️ Beach',
   '🏛️ Museums & Culture', '🍽️ Food & Drinks', '🚗 Scenic Drives',
-  '⛵ Water / Boating', '🌃 Nightlife', '🎡 Kid Activities',
-  '⭐ Stargazing', '⛳ Golf / Sports',
-]
-
-const DIETARY = ['🌱 Vegetarian', '🥦 Vegan', '🐟 Pescatarian', '🌾 Gluten-free', '🥜 Nut allergy', '👶 Picky kids']
-
-const LODGING = [
-  '🏡 Single property (Airbnb/VRBO)', '🏨 Hotel', '♨️ Hot tub',
-  '🔥 Firepit', '🍳 Full kitchen', '🏔️ Mountain views',
+  '⭐ Stargazing', '⛵ Water / Boating', '🌃 Nightlife', '🎡 Kid Activities', '⛳ Golf / Sports',
 ]
 
 const GEN_STEPS = [
   'Reading your preferences',
-  'Researching flights',
+  'Researching travel options',
   'Finding lodging options',
   'Discovering activities',
-  'Checking weather & seasonality',
   'Building your trip plan',
   'Finalizing packing list & budget',
 ]
 
-interface WizardState extends TripGuidelines {
-  // extra UI state
-  step: number
-  genStep: number
-  genError?: string
+const labelStyle: React.CSSProperties = {
+  fontSize: '12px',
+  fontWeight: 600,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase' as const,
+  color: '#998f7c',
+  marginBottom: '8px',
+  display: 'block',
 }
 
-const DEFAULT: WizardState = {
-  step: 1,
-  genStep: 0,
-  tripType: 'family',
-  travelersMin: 2,
-  travelersMax: 4,
-  kidsAges: [],
-  planningStage: 'destination_selected',
-  destination: '',
-  targetMonthYear: '',
-  nights: 7,
-  departureAirport: '',
-  domesticOrInternational: 'domestic',
-  interests: [],
-  budgetStyle: 'mid',
-  dietaryNeeds: [],
-  lodgingPrefs: [],
-  freeTextNotes: '',
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--surface2)',
+  border: '1px solid var(--border)',
+  borderRadius: '10px',
+  padding: '14px 16px',
+  fontSize: '15px',
+  color: 'var(--text)',
+  outline: 'none',
+  fontFamily: 'inherit',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      {children}
+    </div>
+  )
 }
 
 export default function PlanPage() {
   const router = useRouter()
-  const [state, setState] = useState<WizardState>(DEFAULT)
-  const [generatedPlan, setGeneratedPlan] = useState<object | null>(null)
 
-  const set = <K extends keyof WizardState>(key: K, value: WizardState[K]) =>
-    setState((s) => ({ ...s, [key]: value }))
+  const [destination, setDestination] = useState('')
+  const [timeframeMode, setTimeframeMode] = useState<'flexible' | 'exact'>('flexible')
+  const [targetMonthYear, setTargetMonthYear] = useState('')
+  const [nights, setNights] = useState(7)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [travelersMin, setTravelersMin] = useState(2)
+  const [travelersMax, setTravelersMax] = useState(4)
+  const [tripType, setTripType] = useState<'family' | 'adults' | 'undecided'>('adults')
+  const [kidsAges, setKidsAges] = useState<number[]>([])
+  const [travelMode, setTravelMode] = useState<'fly' | 'drive'>('fly')
+  const [departureAirport, setDepartureAirport] = useState('')
+  const [drivingFrom, setDrivingFrom] = useState('')
+  const [domesticOrInternational, setDomesticOrInternational] = useState<'domestic' | 'international'>('domestic')
+  const [budgetStyle, setBudgetStyle] = useState<BudgetStyle>('mid')
+  const [interests, setInterests] = useState<string[]>([])
+  const [dietaryNeeds] = useState<string[]>([])
+  const [lodgingPrefs] = useState<string[]>([])
+  const [freeTextNotes, setFreeTextNotes] = useState('')
 
-  const nextStep = () => setState((s) => ({ ...s, step: s.step + 1 }))
-  const prevStep = () => setState((s) => ({ ...s, step: s.step - 1 }))
+  const [generating, setGenerating] = useState(false)
+  const [genStep, setGenStep] = useState(0)
+  const [genError, setGenError] = useState('')
+  const [savedTripId, setSavedTripId] = useState<string | null>(null)
 
-  const budgetRanges = calcBudgetRanges(
-    state.nights,
-    state.travelersMin,
-    state.travelersMax,
-    state.domesticOrInternational
-  )
+  const budgetRanges = calcBudgetRanges(nights, travelersMin, travelersMax, domesticOrInternational)
 
   async function generate() {
-    setState((s) => ({ ...s, step: 5, genStep: 0, genError: undefined }))
+    if (!destination.trim()) return
+    setGenerating(true)
+    setGenStep(0)
+    setGenError('')
+
+    const exactNights = startDate && endDate
+      ? Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))
+      : nights
 
     const guidelines: TripGuidelines = {
-      tripType: state.tripType,
-      travelersMin: state.travelersMin,
-      travelersMax: state.travelersMax,
-      kidsAges: state.kidsAges,
-      planningStage: state.planningStage,
-      destination: state.destination,
-      targetMonthYear: state.targetMonthYear,
-      nights: state.nights,
-      departureAirport: state.departureAirport,
-      domesticOrInternational: state.domesticOrInternational,
-      interests: state.interests,
-      budgetStyle: state.budgetStyle,
-      dietaryNeeds: state.dietaryNeeds,
-      lodgingPrefs: state.lodgingPrefs,
-      freeTextNotes: state.freeTextNotes,
+      tripType,
+      travelersMin,
+      travelersMax,
+      kidsAges,
+      planningStage: 'destination_selected',
+      destination,
+      timeframeMode,
+      targetMonthYear: timeframeMode === 'flexible' ? targetMonthYear : '',
+      nights: timeframeMode === 'exact' ? exactNights : nights,
+      startDate: timeframeMode === 'exact' ? startDate : undefined,
+      endDate: timeframeMode === 'exact' ? endDate : undefined,
+      travelMode,
+      departureAirport,
+      drivingFrom,
+      domesticOrInternational,
+      interests,
+      budgetStyle,
+      dietaryNeeds,
+      lodgingPrefs,
+      freeTextNotes,
     }
 
     try {
@@ -112,399 +122,345 @@ export default function PlanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(guidelines),
       })
-
       if (!res.body) throw new Error('No response body')
-
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
-
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n\n')
         buffer = lines.pop() ?? ''
-
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const parsed = JSON.parse(line.slice(6))
-          if (parsed.event === 'progress') {
-            setState((s) => ({ ...s, genStep: parsed.data.step }))
-          } else if (parsed.event === 'complete') {
-            setGeneratedPlan(parsed.data.plan)
-            if (parsed.data.tripId) {
-              router.push(`/trips/${parsed.data.tripId}`)
-            } else {
-              router.push('/')
-            }
+          if (parsed.event === 'started') {
+            if (parsed.data.tripId) setSavedTripId(parsed.data.tripId)
+          } else if (parsed.event === 'progress') setGenStep(parsed.data.step)
+          else if (parsed.event === 'complete') {
+            if (parsed.data.tripId) router.push(`/trips/${parsed.data.tripId}`)
+            else router.push('/')
           } else if (parsed.event === 'error') {
-            setState((s) => ({ ...s, genError: parsed.data.message }))
+            setGenError(parsed.data.message)
+            setGenerating(false)
           }
         }
       }
     } catch (err) {
-      setState((s) => ({ ...s, genError: err instanceof Error ? err.message : 'Generation failed' }))
+      setGenError(err instanceof Error ? err.message : 'Generation failed')
+      setGenerating(false)
     }
   }
 
-  return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 24px' }}>
-
-      {state.step === 1 && (
-        <>
-          <WizardProgress currentStep={1} />
-          <WizardCard
-            title="Who's this trip for?"
-            subtitle="This shapes everything — activities, pacing, lodging, and how detailed the plan gets."
-            footer={
-              <>
-                <WizardButton variant="ghost" onClick={() => router.push('/')}>Cancel</WizardButton>
-                <WizardButton onClick={nextStep}>Next: When & Where →</WizardButton>
-              </>
-            }
-          >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '32px' }}>
-              <ChoiceCard
-                icon="👨‍👩‍👧‍👦"
-                label="Family"
-                desc="Kids, parents, maybe grandparents — kid-inclusive activities & pacing"
-                selected={state.tripType === 'family'}
-                onClick={() => set('tripType', 'family')}
-              />
-              <ChoiceCard
-                icon="🍻"
-                label="Adults Only"
-                desc="Friends or couples — activity-driven, more flexibility, nightlife options"
-                selected={state.tripType === 'adults'}
-                onClick={() => set('tripType', 'adults')}
-              />
-              <ChoiceCard
-                icon="🗺️"
-                label="Help Me Decide"
-                desc="Not sure on destination — get curated suggestions first"
-                selected={state.tripType === 'undecided'}
-                onClick={() => set('tripType', 'undecided')}
-              />
-            </div>
-
-            <FormGroup label="How many travelers?" optional>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <FormInput
-                  id="travelers-min"
-                  type="number"
-                  placeholder="Min (e.g. 4)"
-                  value={state.travelersMin || ''}
-                  onChange={(e) => set('travelersMin', Number(e.target.value))}
-                  min={1}
-                />
-                <FormInput
-                  id="travelers-max"
-                  type="number"
-                  placeholder="Max (e.g. 6)"
-                  value={state.travelersMax || ''}
-                  onChange={(e) => set('travelersMax', Number(e.target.value))}
-                  min={1}
-                />
-              </div>
-            </FormGroup>
-
-            {state.tripType === 'family' && (
-              <FormGroup label="Kids' ages" optional>
-                <FormInput
-                  type="text"
-                  placeholder="e.g. 4, 6, 9"
-                  value={state.kidsAges.join(', ')}
-                  onChange={(e) => {
-                    const ages = e.target.value
-                      .split(',')
-                      .map((s) => parseInt(s.trim()))
-                      .filter((n) => !isNaN(n))
-                    set('kidsAges', ages)
-                  }}
-                />
-              </FormGroup>
+  if (generating) {
+    return (
+      <div style={{ maxWidth: '560px', margin: '80px auto', padding: '0 24px', textAlign: 'center' }}>
+        {genError ? (
+          <>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>😕</div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, marginBottom: '8px' }}>Something went wrong</h2>
+            <p style={{ color: 'var(--text2)', marginBottom: '24px' }}>{genError}</p>
+            <button
+              onClick={() => { setGenerating(false); setGenError('') }}
+              style={{ background: 'var(--accent)', color: 'white', border: 'none', padding: '11px 24px', borderRadius: '10px', fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              ← Try Again
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ width: '52px', height: '52px', border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.9s linear infinite', margin: '0 auto 28px' }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }`}</style>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', marginBottom: '8px' }}>Building your trip plan…</h2>
+            <p style={{ color: 'var(--text2)', fontSize: '15px' }}>Researching, planning, and putting it all together</p>
+            {savedTripId && (
+              <p style={{ fontSize: '13px', color: 'var(--text3)', marginTop: '10px' }}>
+                ✓ Saved to your account — safe to close this tab and check back on{' '}
+                <a href="/" style={{ color: 'var(--accent)', textDecoration: 'none' }}>My Trips</a>
+              </p>
             )}
-          </WizardCard>
-        </>
-      )}
-
-      {state.step === 2 && (
-        <>
-          <WizardProgress currentStep={2} />
-          <WizardCard
-            title="When & where?"
-            subtitle="Rough answers are totally fine — we work with what you have."
-            footer={
-              <>
-                <WizardButton variant="ghost" onClick={prevStep}>← Back</WizardButton>
-                <WizardButton onClick={nextStep}>Next: Travel Style →</WizardButton>
-              </>
-            }
-          >
-            <FormGroup label="Destination">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '8px' }}>
-                <RadioOption
-                  label="I have a destination in mind"
-                  sublabel="Go deep on one place"
-                  selected={state.planningStage === 'destination_selected'}
-                  onClick={() => set('planningStage', 'destination_selected')}
-                />
-                <RadioOption
-                  label="Show me options"
-                  sublabel="Compare a few destinations against my preferences"
-                  selected={state.planningStage === 'ideation'}
-                  onClick={() => set('planningStage', 'ideation')}
-                />
-              </div>
-              <FormInput
-                type="text"
-                placeholder={state.planningStage === 'destination_selected' ? 'e.g. Spain, National Parks, Japan…' : 'e.g. beach, warm, 4hrs from Phoenix…'}
-                value={state.destination}
-                onChange={(e) => set('destination', e.target.value)}
-              />
-            </FormGroup>
-
-            <FormGroup label="Timeframe">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <FormInput
-                  type="text"
-                  placeholder="Month & year (e.g. July 2026)"
-                  value={state.targetMonthYear}
-                  onChange={(e) => set('targetMonthYear', e.target.value)}
-                />
-                <FormInput
-                  id="trip-nights"
-                  type="number"
-                  placeholder="# of nights (e.g. 7)"
-                  value={state.nights || ''}
-                  onChange={(e) => set('nights', Number(e.target.value))}
-                  min={1}
-                />
-              </div>
-            </FormGroup>
-
-            <FormGroup label="Flying from">
-              <FormInput
-                type="text"
-                placeholder="e.g. Phoenix, AZ (PHX/AZA)"
-                value={state.departureAirport}
-                onChange={(e) => set('departureAirport', e.target.value)}
-              />
-            </FormGroup>
-
-            <FormGroup label="Trip type">
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <RadioOption
-                  label="Domestic"
-                  selected={state.domesticOrInternational === 'domestic'}
-                  onClick={() => set('domesticOrInternational', 'domestic')}
-                />
-                <RadioOption
-                  label="International"
-                  selected={state.domesticOrInternational === 'international'}
-                  onClick={() => set('domesticOrInternational', 'international')}
-                />
-              </div>
-            </FormGroup>
-          </WizardCard>
-        </>
-      )}
-
-      {state.step === 3 && (
-        <>
-          <WizardProgress currentStep={3} />
-          <WizardCard
-            title="What's your vibe?"
-            subtitle="Pick all that apply."
-            footer={
-              <>
-                <WizardButton variant="ghost" onClick={prevStep}>← Back</WizardButton>
-                <WizardButton onClick={nextStep}>Next: Details →</WizardButton>
-              </>
-            }
-          >
-            <FormGroup label="Interests & must-haves">
-              <TagPicker
-                options={INTERESTS.map((i) => ({ label: i }))}
-                selected={state.interests}
-                onChange={(v) => set('interests', v)}
-              />
-            </FormGroup>
-
-            <FormGroup label="Budget style">
-              {budgetRanges && (
-                <div style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '10px' }}>
-                  Estimates for {budgetRanges.nights}-night trip · {budgetRanges.pax} traveler{budgetRanges.pax !== 1 ? 's' : ''}
-                  <span style={{ fontSize: '11px', marginLeft: '6px' }}>· Includes flights, lodging, food &amp; activities</span>
-                </div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {(['budget', 'mid', 'splurge'] as BudgetStyle[]).map((tier) => {
-                  const labels: Record<BudgetStyle, { label: string; sublabel: string; color: string }> = {
-                    budget: { label: 'Budget-friendly', sublabel: 'Value matters most', color: 'var(--green)' },
-                    mid: { label: 'Mid-range', sublabel: 'Good value, some splurges OK', color: 'var(--accent)' },
-                    splurge: { label: 'Splurge', sublabel: 'Quality and comfort first', color: 'var(--amber)' },
-                  }
-                  const meta = labels[tier]
-                  const range = budgetRanges?.[tier]
-                  return (
-                    <RadioOption
-                      key={tier}
-                      label={meta.label}
-                      sublabel={range ? `${range.rate} · ${meta.sublabel}` : meta.sublabel}
-                      selected={state.budgetStyle === tier}
-                      onClick={() => set('budgetStyle', tier)}
-                      right={
-                        range ? (
-                          <span style={{ marginLeft: 'auto', fontSize: '13px', fontWeight: 700, color: meta.color, whiteSpace: 'nowrap' }}>
-                            {range.label}
-                          </span>
-                        ) : undefined
-                      }
-                    />
-                  )
-                })}
-              </div>
-            </FormGroup>
-          </WizardCard>
-        </>
-      )}
-
-      {state.step === 4 && (
-        <>
-          <WizardProgress currentStep={4} />
-          <WizardCard
-            title="A few more details"
-            subtitle="Optional, but helps make the plan more useful."
-            footer={
-              <>
-                <WizardButton variant="ghost" onClick={prevStep}>← Back</WizardButton>
-                <WizardButton onClick={generate}>Generate My Trip Plan ✨</WizardButton>
-              </>
-            }
-          >
-            <FormGroup label="Dietary needs" optional>
-              <TagPicker
-                options={DIETARY.map((d) => ({ label: d }))}
-                selected={state.dietaryNeeds}
-                onChange={(v) => set('dietaryNeeds', v)}
-              />
-            </FormGroup>
-
-            <FormGroup label="Lodging preferences" optional>
-              <TagPicker
-                options={LODGING.map((l) => ({ label: l }))}
-                selected={state.lodgingPrefs}
-                onChange={(v) => set('lodgingPrefs', v)}
-              />
-            </FormGroup>
-
-            <FormGroup label="Anything else?" optional>
-              <FormTextarea
-                placeholder="e.g. 'avoid big crowds', 'want a sunrise hike', 'birthday celebration', 'no red-eye flights'…"
-                value={state.freeTextNotes}
-                onChange={(e) => set('freeTextNotes', e.target.value)}
-                rows={3}
-              />
-            </FormGroup>
-          </WizardCard>
-        </>
-      )}
-
-      {state.step === 5 && (
-        <>
-          <WizardProgress currentStep={5} />
-          <div
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-lg)',
-              padding: '36px',
-              boxShadow: 'var(--shadow)',
-            }}
-          >
-            <div style={{ textAlign: 'center', padding: '48px 0' }}>
-              {state.genError ? (
-                <>
-                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>😕</div>
-                  <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>Something went wrong</h2>
-                  <p style={{ color: 'var(--text2)', marginBottom: '24px' }}>{state.genError}</p>
-                  <WizardButton onClick={() => setState((s) => ({ ...s, step: 4 }))}>← Try Again</WizardButton>
-                </>
-              ) : (
-                <>
-                  <div
-                    style={{
-                      width: '56px',
-                      height: '56px',
-                      border: '4px solid var(--border)',
-                      borderTopColor: 'var(--accent)',
-                      borderRadius: '50%',
-                      animation: 'spin 0.9s linear infinite',
-                      margin: '0 auto 24px',
-                    }}
-                  />
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }`}</style>
-                  <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>Building your trip plan…</h2>
-                  <p style={{ color: 'var(--text2)', fontSize: '15px' }}>Researching flights, lodging, activities, and local tips</p>
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px',
-                      marginTop: '28px',
-                      textAlign: 'left',
-                      maxWidth: '320px',
-                      margin: '28px auto 0',
-                    }}
-                  >
-                    {GEN_STEPS.map((label, i) => {
-                      const stepNum = i + 1
-                      const isDone = state.genStep > stepNum
-                      const isActive = state.genStep === stepNum
-                      return (
-                        <div
-                          key={label}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            fontSize: '14px',
-                            color: isDone ? 'var(--green)' : isActive ? 'var(--accent)' : 'var(--text2)',
-                            fontWeight: isActive ? 600 : 400,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '20px',
-                              height: '20px',
-                              borderRadius: '50%',
-                              border: '2px solid currentColor',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                              fontSize: '11px',
-                              background: isDone ? 'var(--green)' : 'transparent',
-                              borderColor: isDone ? 'var(--green)' : undefined,
-                              color: isDone ? 'white' : 'currentColor',
-                              animation: isActive ? 'pulse 1s infinite' : 'none',
-                            }}
-                          >
-                            {isDone ? '✓' : ''}
-                          </div>
-                          {label}
-                        </div>
-                      )
-                    })}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '32px', textAlign: 'left', maxWidth: '300px', margin: '32px auto 0' }}>
+              {GEN_STEPS.map((label, i) => {
+                const n = i + 1
+                const done = genStep > n
+                const active = genStep === n
+                return (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: done ? 'var(--green)' : active ? 'var(--accent)' : 'var(--text3)', fontWeight: active ? 600 : 400 }}>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid currentColor', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '11px', background: done ? 'var(--green)' : 'transparent', color: done ? 'white' : 'currentColor', animation: active ? 'pulse 1s infinite' : 'none' }}>
+                      {done ? '✓' : ''}
+                    </div>
+                    {label}
                   </div>
-                </>
-              )}
+                )
+              })}
             </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '52px 24px 80px' }} className="plan-page">
+      {/* Header */}
+      <div style={{ marginBottom: '34px' }} className="plan-header">
+        <div style={{ fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 600, marginBottom: '10px' }}>New trip</div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '40px', lineHeight: 1.05, letterSpacing: '-0.025em', margin: 0 }}>Where to next?</h1>
+        <p style={{ fontSize: '15.5px', color: 'var(--text2)', margin: '14px 0 0', lineHeight: 1.55 }}>
+          Tell us the shape of it. We&apos;ll draft an itinerary you can shape together.
+        </p>
+      </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .plan-page { padding-top: 28px !important; }
+          .plan-header h1 { font-size: 28px !important; }
+        }
+      `}</style>
+
+      {/* Composer card */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+
+        <Field label="Destination">
+          <input
+            type="text"
+            placeholder="Grand Teton National Park, Spain, Tokyo…"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+            style={{ ...inputStyle, fontSize: '16px' }}
+            onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+            onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+          />
+        </Field>
+
+        <Field label="When">
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            {(['flexible', 'exact'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setTimeframeMode(mode)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '100px',
+                  border: `1.5px solid ${timeframeMode === mode ? 'var(--accent)' : 'var(--border)'}`,
+                  background: timeframeMode === mode ? 'var(--accent-light)' : 'var(--surface2)',
+                  color: timeframeMode === mode ? 'var(--accent)' : 'var(--text2)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {mode === 'flexible' ? 'Flexible' : 'Exact dates'}
+              </button>
+            ))}
           </div>
-        </>
-      )}
+          {timeframeMode === 'flexible' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <input
+                type="text"
+                placeholder="Month & year (e.g. August 2026)"
+                value={targetMonthYear}
+                onChange={(e) => setTargetMonthYear(e.target.value)}
+                style={inputStyle}
+                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="number"
+                  min={1}
+                  value={nights}
+                  onChange={(e) => setNights(Number(e.target.value))}
+                  style={{ ...inputStyle, paddingRight: '52px' }}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+                <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: 'var(--text3)', pointerEvents: 'none' }}>nights</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '5px', fontWeight: 500 }}>Start</div>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '5px', fontWeight: 500 }}>
+                  End
+                  {startDate && endDate && new Date(endDate) > new Date(startDate) && (
+                    <span style={{ marginLeft: '6px', color: 'var(--accent)' }}>
+                      · {Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000)} nights
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                />
+              </div>
+            </div>
+          )}
+        </Field>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <Field label="Travelers">
+            <div style={{ display: 'flex', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '11px 14px', alignItems: 'center', gap: '10px', fontSize: '15px' }}>
+              <input type="number" min={1} value={travelersMin} onChange={(e) => setTravelersMin(Number(e.target.value))} style={{ width: '36px', border: 'none', background: 'transparent', fontSize: '15px', outline: 'none', textAlign: 'center', fontFamily: 'inherit' }} />
+              <span style={{ color: 'var(--text3)' }}>–</span>
+              <input type="number" min={1} value={travelersMax} onChange={(e) => setTravelersMax(Number(e.target.value))} style={{ width: '36px', border: 'none', background: 'transparent', fontSize: '15px', outline: 'none', textAlign: 'center', fontFamily: 'inherit' }} />
+              <span style={{ color: 'var(--text3)', marginLeft: '2px' }}>people</span>
+            </div>
+          </Field>
+          <Field label="Trip type">
+            <select
+              value={tripType}
+              onChange={(e) => setTripType(e.target.value as 'family' | 'adults' | 'undecided')}
+              style={{ ...inputStyle, cursor: 'pointer' }}
+            >
+              <option value="adults">Adults</option>
+              <option value="family">Family</option>
+              <option value="undecided">Not sure yet</option>
+            </select>
+          </Field>
+        </div>
+
+        {tripType === 'family' && (
+          <Field label="Kids' ages">
+            <KidsPillInput value={kidsAges} onChange={setKidsAges} />
+          </Field>
+        )}
+
+        <Field label="Flying from">
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+            {(['fly', 'drive'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setTravelMode(mode)}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '100px',
+                  border: `1.5px solid ${travelMode === mode ? 'var(--accent)' : 'var(--border)'}`,
+                  background: travelMode === mode ? 'var(--accent-light)' : 'var(--surface2)',
+                  color: travelMode === mode ? 'var(--accent)' : 'var(--text2)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {mode === 'fly' ? '✈️ Flying' : '🚗 Driving'}
+              </button>
+            ))}
+          </div>
+          {travelMode === 'fly' ? (
+            <input
+              type="text"
+              placeholder="Departure airport or city (e.g. Phoenix, AZ)"
+              value={departureAirport}
+              onChange={(e) => setDepartureAirport(e.target.value)}
+              style={inputStyle}
+              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+            />
+          ) : (
+            <input
+              type="text"
+              placeholder="Driving from (e.g. Scottsdale, AZ)"
+              value={drivingFrom}
+              onChange={(e) => setDrivingFrom(e.target.value)}
+              style={inputStyle}
+              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+            />
+          )}
+        </Field>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <Field label="Domestic or International">
+            <select
+              value={domesticOrInternational}
+              onChange={(e) => setDomesticOrInternational(e.target.value as 'domestic' | 'international')}
+              style={{ ...inputStyle, cursor: 'pointer' }}
+            >
+              <option value="domestic">Domestic</option>
+              <option value="international">International</option>
+            </select>
+          </Field>
+          <Field label="Budget">
+            <select
+              value={budgetStyle}
+              onChange={(e) => setBudgetStyle(e.target.value as BudgetStyle)}
+              style={{ ...inputStyle, cursor: 'pointer' }}
+            >
+              {(['budget', 'mid', 'splurge'] as BudgetStyle[]).map((tier) => {
+                const labels = { budget: 'Budget-friendly', mid: 'Mid-range', splurge: 'Splurge' }
+                const range = budgetRanges?.[tier]
+                return (
+                  <option key={tier} value={tier}>
+                    {labels[tier]}{range ? ` · ${range.label}` : ''}
+                  </option>
+                )
+              })}
+            </select>
+          </Field>
+        </div>
+
+        <Field label="What are you into?">
+          <TagPicker
+            options={INTERESTS.map((i) => ({ label: i }))}
+            selected={interests}
+            onChange={setInterests}
+          />
+        </Field>
+
+        <Field label="Anything specific?">
+          <textarea
+            placeholder="Two families, a mix of ages. Want one big hike and an easy lake day…"
+            value={freeTextNotes}
+            onChange={(e) => setFreeTextNotes(e.target.value)}
+            rows={3}
+            style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
+            onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
+            onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+          />
+        </Field>
+
+        <button
+          onClick={generate}
+          disabled={!destination.trim()}
+          style={{
+            width: '100%',
+            marginTop: '4px',
+            background: 'var(--accent)',
+            color: '#FBF7F0',
+            border: 'none',
+            padding: '15px',
+            borderRadius: '10px',
+            fontFamily: 'var(--font-body)',
+            fontSize: '15.5px',
+            fontWeight: 600,
+            cursor: destination.trim() ? 'pointer' : 'not-allowed',
+            opacity: destination.trim() ? 1 : 0.6,
+            boxShadow: '0 6px 16px rgba(47,110,115,.22)',
+            letterSpacing: '0.01em',
+          }}
+        >
+          ✦  Generate trip plan
+        </button>
+      </div>
     </div>
   )
 }
