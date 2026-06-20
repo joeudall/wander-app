@@ -18,6 +18,16 @@ const STATUS_BADGE: Record<string, { label: string; bg: string }> = {
 }
 
 export default function TripCard({ trip }: { trip: Trip }) {
+  if (!trip.plan?.destination) {
+    return (
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: '28px 20px', textAlign: 'center', color: 'var(--text3)' }}>
+        <div style={{ fontSize: '22px', marginBottom: '10px' }}>✦</div>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text2)', marginBottom: '4px' }}>Generating trip plan…</div>
+        <div style={{ fontSize: '13px' }}>Refresh to check status</div>
+      </div>
+    )
+  }
+
   const badge = STATUS_BADGE[trip.status]
   const gradient = CARD_GRADIENTS[trip.cardColor] ?? CARD_GRADIENTS.blue
   const travelerText =

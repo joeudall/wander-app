@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
 
   ;(async () => {
     try {
+      const session = await auth()
+
       const { destination, targetMonthYear, startDate, endDate, timeframeMode,
         departureAirport, drivingFrom, travelMode,
         domesticOrInternational, lodgingPrefs, interests, tripType } = guidelines
@@ -45,6 +47,18 @@ export async function POST(req: NextRequest) {
       const timeframe = timeframeMode === 'exact' && startDate && endDate
         ? `${startDate} to ${endDate}`
         : targetMonthYear
+
+      // Save a placeholder trip immediately so it's in the account even if the user navigates away
+      let tripId: string | null = null
+      if (session?.user?.id) {
+        const rows = await sql`
+          INSERT INTO trips (user_id, guidelines, plan, status, emoji, card_color)
+          VALUES (${session.user.id}, ${JSON.stringify(guidelines)}, '{}', 'planning', '🗺️', 'blue')
+          RETURNING id
+        `
+        tripId = rows[0]?.id ?? null
+      }
+      await send('started', { tripId })
 
       let travelResearch: string
       if (travelMode === 'drive') {
@@ -86,24 +100,18 @@ export async function POST(req: NextRequest) {
         const jsonMatch = planJson.match(/\{[\s\S]*\}/)
         plan = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(planJson)
       } catch {
+        // Clean up the placeholder if we couldn't parse the plan
+        if (tripId) await sql`DELETE FROM trips WHERE id = ${tripId}`
         await send('error', { message: 'Failed to parse trip plan. Please try again.' })
         return
       }
 
-      // Save to Neon
-      const session = await auth()
-      let savedTripId: string | null = null
-
-      if (session?.user?.id) {
-        const rows = await sql`
-          INSERT INTO trips (user_id, guidelines, plan, status, emoji, card_color)
-          VALUES (${session.user.id}, ${JSON.stringify(guidelines)}, ${JSON.stringify(plan)}, 'planning', '🗺️', 'blue')
-          RETURNING id
-        `
-        savedTripId = rows[0]?.id ?? null
+      // Update the placeholder with the real plan
+      if (tripId) {
+        await sql`UPDATE trips SET plan = ${JSON.stringify(plan)} WHERE id = ${tripId}`
       }
 
-      await send('complete', { plan, tripId: savedTripId })
+      await send('complete', { plan, tripId })
     } catch (err) {
       await send('error', { message: err instanceof Error ? err.message : 'Generation failed' })
     } finally {

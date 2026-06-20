@@ -79,6 +79,7 @@ export default function PlanPage() {
   const [generating, setGenerating] = useState(false)
   const [genStep, setGenStep] = useState(0)
   const [genError, setGenError] = useState('')
+  const [savedTripId, setSavedTripId] = useState<string | null>(null)
 
   const budgetRanges = calcBudgetRanges(nights, travelersMin, travelersMax, domesticOrInternational)
 
@@ -134,7 +135,9 @@ export default function PlanPage() {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const parsed = JSON.parse(line.slice(6))
-          if (parsed.event === 'progress') setGenStep(parsed.data.step)
+          if (parsed.event === 'started') {
+            if (parsed.data.tripId) setSavedTripId(parsed.data.tripId)
+          } else if (parsed.event === 'progress') setGenStep(parsed.data.step)
           else if (parsed.event === 'complete') {
             if (parsed.data.tripId) router.push(`/trips/${parsed.data.tripId}`)
             else router.push('/')
@@ -171,6 +174,12 @@ export default function PlanPage() {
             <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }`}</style>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', marginBottom: '8px' }}>Building your trip plan…</h2>
             <p style={{ color: 'var(--text2)', fontSize: '15px' }}>Researching, planning, and putting it all together</p>
+            {savedTripId && (
+              <p style={{ fontSize: '13px', color: 'var(--text3)', marginTop: '10px' }}>
+                ✓ Saved to your account — safe to close this tab and check back on{' '}
+                <a href="/" style={{ color: 'var(--accent)', textDecoration: 'none' }}>My Trips</a>
+              </p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '32px', textAlign: 'left', maxWidth: '300px', margin: '32px auto 0' }}>
               {GEN_STEPS.map((label, i) => {
                 const n = i + 1
