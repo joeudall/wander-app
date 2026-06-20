@@ -5,6 +5,7 @@ import { Trip } from '@/lib/schema'
 import Link from 'next/link'
 import Tag, { activityTagVariant } from '@/components/ui/Tag'
 import CommentsPanel from '@/components/family/CommentsPanel'
+import { kayakFlightUrl, bookingSearchUrl, platformAffiliateUrl, viatorActivityUrl } from '@/lib/affiliateLinks'
 
 const MountainBanner = () => (
   <svg viewBox="0 0 1040 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ display: 'block' }}>
@@ -110,7 +111,7 @@ export default function TripDetail({ trip, isOwner = false, isShared: initialSha
 
       {/* Content */}
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview' && <OverviewTab trip={trip} />}
+        {activeTab === 'overview' && <OverviewTab trip={trip} guidelines={trip.guidelines} />}
         {activeTab === 'itinerary' && <ItineraryTab trip={trip} />}
         {activeTab === 'bookings' && <BookingsTab trip={trip} />}
         {activeTab === 'food' && <FoodTab trip={trip} />}
@@ -161,7 +162,7 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
   )
 }
 
-function OverviewTab({ trip }: { trip: Trip }) {
+function OverviewTab({ trip, guidelines }: { trip: Trip; guidelines: Trip['guidelines'] }) {
   const { plan } = trip
   return (
     <>
@@ -187,10 +188,20 @@ function OverviewTab({ trip }: { trip: Trip }) {
         <InfoCard title="✈️ Flights">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {plan.flights.map((f, i) => (
-              <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>{f.airline}</div>
-                <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{f.priceRange} · {f.flightTime}</div>
-                {f.notes && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{f.notes}</div>}
+              <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '12px' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>{f.airline}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{f.priceRange} · {f.flightTime}</div>
+                  {f.notes && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{f.notes}</div>}
+                </div>
+                <a
+                  href={kayakFlightUrl(guidelines.departureAirport ?? '', guidelines.destination, guidelines.targetMonthYear)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#FF690F', color: '#fff', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  Search Kayak ↗
+                </a>
               </div>
             ))}
           </div>
@@ -199,9 +210,21 @@ function OverviewTab({ trip }: { trip: Trip }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {plan.lodging.map((l, i) => (
               <div key={i} style={{ padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)' }}>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>{l.type}</div>
-                <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{l.neighborhood} · {l.pricePerNight}</div>
-                {l.notes && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{l.notes}</div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>{l.type}</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{l.neighborhood} · {l.pricePerNight}</div>
+                    {l.notes && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{l.notes}</div>}
+                  </div>
+                  <a
+                    href={bookingSearchUrl(guidelines.destination)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#003580', color: '#fff', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    Booking.com ↗
+                  </a>
+                </div>
               </div>
             ))}
           </div>
@@ -255,12 +278,22 @@ function ItineraryTab({ trip }: { trip: Trip }) {
                   {activity.timeOfDay && <div style={{ fontSize: '13px', color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{activity.timeOfDay}</div>}
                 </div>
                 <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '5px', lineHeight: 1.5 }}>{activity.description}</div>
-                {(activity.cost || (activity.tags && activity.tags.length > 0)) && (
+                {(activity.cost || (activity.tags && activity.tags.length > 0) || activity.bookingRequired) && (
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                     {activity.cost && <span style={{ fontSize: '12px', color: 'var(--text3)' }}>💰 {activity.cost}</span>}
                     {activity.tags?.map((tag) => (
                       <Tag key={tag} variant={activityTagVariant(tag)}>{tag}</Tag>
                     ))}
+                    {activity.bookingRequired && (
+                      <a
+                        href={viatorActivityUrl(activity.name, trip.guidelines.destination)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#328F79', color: '#fff', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', marginLeft: 'auto', whiteSpace: 'nowrap' }}
+                      >
+                        Book on Viator ↗
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
@@ -315,7 +348,14 @@ function BookingsTab({ trip }: { trip: Trip }) {
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}><strong>{b.activity}</strong></td>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{b.time}</td>
               <td style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                {b.platform}
+                {(() => {
+                  const url = platformAffiliateUrl(b.platform, trip.guidelines.destination)
+                  return url ? (
+                    <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '12px', textDecoration: 'none', borderBottom: '1px solid var(--accent-light)' }}>
+                      {b.platform} ↗
+                    </a>
+                  ) : b.platform
+                })()}
                 {b.reference && (
                   <><br /><code style={{ fontFamily: 'monospace', fontSize: '12px', background: 'var(--surface2)', padding: '2px 7px', borderRadius: '4px', color: 'var(--text2)' }}>{b.reference}</code></>
                 )}

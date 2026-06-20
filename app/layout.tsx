@@ -15,6 +15,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <Nav />
           <main>{children}</main>
+          <footer style={{ padding: '24px 40px', borderTop: '1px solid var(--border)', fontSize: '12px', color: 'var(--text3)', textAlign: 'center' }}>
+            This site contains affiliate links. We may earn a small commission if you book through them — at no extra cost to you. It helps keep Wander free.
+          </footer>
         </Providers>
       </body>
     </html>
