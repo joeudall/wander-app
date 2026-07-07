@@ -1,5 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 @import "tailwindcss";
+
+/* Fonts are self-hosted via next/font (see app/layout.tsx), which defines
+   --font-body and --font-display on <html>. */
 
 :root {
   /* Brand */
@@ -21,7 +23,7 @@
   /* Text */
   --text: #2E2A24;
   --text2: #7A7163;
-  --text3: #998f7c;
+  --text3: #857b69; /* darkened from #998f7c for WCAG contrast on --bg */
 
   /* Warm accent (terra cotta) */
   --warm: #D98E5F;
@@ -46,10 +48,6 @@
   --radius: 12px;
   --radius-lg: 14px;
   --radius-pill: 999px;
-
-  /* Typography */
-  --font-body: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
-  --font-display: 'Schibsted Grotesk', system-ui, -apple-system, sans-serif;
 }
 
 @theme inline {
@@ -74,6 +72,28 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
+}
+
+/* Standard text input focus ring — replaces per-input JS focus handlers */
+.input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(47, 110, 115, 0.12);
+}
+
+/* Loading skeletons */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface3) 25%, var(--surface2) 50%, var(--surface3) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
