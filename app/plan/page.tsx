@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { TripGuidelines, BudgetStyle } from '@/lib/schema'
 import { calcBudgetRanges } from '@/lib/budget'
 import { TagPicker, KidsPillInput } from '@/components/wizard/WizardShell'
@@ -60,6 +61,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function PlanPage() {
   const router = useRouter()
+  const { data: session } = useSession()
 
   const [destination, setDestination] = useState('')
   const [timeframeMode, setTimeframeMode] = useState<'flexible' | 'exact'>('flexible')
@@ -127,6 +129,10 @@ export default function PlanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(guidelines),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error ?? 'Generation failed')
+      }
       if (!res.body) throw new Error('No response body')
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -181,8 +187,14 @@ export default function PlanPage() {
             <p style={{ color: 'var(--text2)', fontSize: '15px' }}>Researching, planning, and putting it all together</p>
             {savedTripId && (
               <p style={{ fontSize: '13px', color: 'var(--text3)', marginTop: '10px' }}>
-                ✓ Saved to your account — safe to close this tab and check back on{' '}
-                <a href="/" style={{ color: 'var(--accent)', textDecoration: 'none' }}>My Trips</a>
+                {session?.user ? (
+                  <>
+                    ✓ Saved to your account — safe to close this tab and check back on{' '}
+                    <a href="/" style={{ color: 'var(--accent)', textDecoration: 'none' }}>My Trips</a>
+                  </>
+                ) : (
+                  <>✓ Saved on this device — when it&apos;s ready, create a free account to keep it</>
+                )}
               </p>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '32px', textAlign: 'left', maxWidth: '300px', margin: '32px auto 0' }}>
@@ -233,8 +245,7 @@ export default function PlanPage() {
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
             style={{ ...inputStyle, fontSize: '16px' }}
-            onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-            onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+            className="input"
           />
         </Field>
 
@@ -268,8 +279,7 @@ export default function PlanPage() {
                 value={targetMonthYear}
                 onChange={(e) => setTargetMonthYear(e.target.value)}
                 style={inputStyle}
-                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-                onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                className="input"
               />
               <div style={{ position: 'relative' }}>
                 <input
@@ -278,8 +288,7 @@ export default function PlanPage() {
                   value={nights}
                   onChange={(e) => setNights(Number(e.target.value))}
                   style={{ ...inputStyle, paddingRight: '52px' }}
-                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                  className="input"
                 />
                 <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: 'var(--text3)', pointerEvents: 'none' }}>nights</span>
               </div>
@@ -293,8 +302,7 @@ export default function PlanPage() {
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   style={inputStyle}
-                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                  className="input"
                 />
               </div>
               <div>
@@ -312,8 +320,7 @@ export default function PlanPage() {
                   min={startDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   style={inputStyle}
-                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-                  onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+                  className="input"
                 />
               </div>
             </div>
@@ -377,8 +384,7 @@ export default function PlanPage() {
               value={departureAirport}
               onChange={(e) => setDepartureAirport(e.target.value)}
               style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+              className="input"
             />
           ) : (
             <input
@@ -387,8 +393,7 @@ export default function PlanPage() {
               value={drivingFrom}
               onChange={(e) => setDrivingFrom(e.target.value)}
               style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-              onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+              className="input"
             />
           )}
         </Field>
@@ -446,8 +451,7 @@ export default function PlanPage() {
             onChange={(e) => setFreeTextNotes(e.target.value)}
             rows={3}
             style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
-            onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-            onBlur={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
+            className="input"
           />
         </Field>
 

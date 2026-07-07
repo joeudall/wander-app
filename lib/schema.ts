@@ -126,17 +126,18 @@ export interface DestinationPlan {
   }>
 }
 
+// Field names match the DB columns (snake_case) since rows are passed through as-is.
 export interface Trip {
   id: string
   guidelines: TripGuidelines
   plan: DestinationPlan
   status: 'upcoming' | 'past' | 'planning' | 'taken'
-  createdAt: string
-  cardColor: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
+  created_at: string
+  card_color: 'blue' | 'green' | 'purple' | 'orange' | 'gold'
   emoji: string
-  groupId?: string
   is_public: boolean
-  user_id: string
+  user_id: string | null
+  anon_id?: string | null
 }
 
 // Section 14 — Collaboration

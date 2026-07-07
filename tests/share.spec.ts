@@ -81,7 +81,7 @@ test('shared trip is accessible without login', async ({ page, context }) => {
   await guestContext.close()
 })
 
-test('unshared trip redirects logged-out user to login', async ({ context }) => {
+test('unshared trip shows private explainer to logged-out user', async ({ context }) => {
   // Reset trip to unshared state directly via DB
   await unshareTrip(tripId)
 
@@ -90,8 +90,11 @@ test('unshared trip redirects logged-out user to login', async ({ context }) => 
   const guestPage = await guestContext.newPage()
   await guestPage.goto(`/trips/${tripId}`)
 
-  // Should redirect to login (not show the trip)
-  await expect(guestPage).toHaveURL(/\/login/, { timeout: 8_000 })
+  // Should stay on the trip URL and show a friendly explainer, not the trip
+  // (not redirect to login, and not 404 — see app/trips/[id]/page.tsx)
+  await expect(guestPage).toHaveURL(new RegExp(`/trips/${tripId}$`))
+  await expect(guestPage.getByRole('heading', { name: 'This trip is private' })).toBeVisible({ timeout: 8_000 })
+  await expect(guestPage.getByRole('main').getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', `/login?callbackUrl=/trips/${tripId}`)
   await guestContext.close()
 })
 

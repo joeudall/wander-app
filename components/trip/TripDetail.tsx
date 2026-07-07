@@ -5,6 +5,7 @@ import { Trip, DestinationPlan } from '@/lib/schema'
 import Link from 'next/link'
 import Tag, { activityTagVariant } from '@/components/ui/Tag'
 import RefinementPanel from '@/components/trip/RefinementPanel'
+import { escapeHtml } from '@/lib/validate'
 
 const MountainBanner = () => (
   <svg viewBox="0 0 1040 200" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ display: 'block' }}>
@@ -20,7 +21,7 @@ const MountainBanner = () => (
 
 type TabName = 'overview' | 'itinerary' | 'bookings' | 'food' | 'tips'
 
-export default function TripDetail({ trip, isOwner = false }: { trip: Trip; isOwner?: boolean }) {
+export default function TripDetail({ trip, isOwner = false, claimable = false }: { trip: Trip; isOwner?: boolean; claimable?: boolean }) {
   const [activeTab, setActiveTab] = useState<TabName>('overview')
   const [plan, setPlan] = useState<DestinationPlan>(trip.plan)
   const [isPublic, setIsPublic] = useState(trip.is_public ?? false)
@@ -45,6 +46,7 @@ export default function TripDetail({ trip, isOwner = false }: { trip: Trip; isOw
     upcoming: { bg: '#E3EDEC', color: '#265B5F' },
     past: { bg: 'var(--surface3)', color: 'var(--text2)' },
     planning: { bg: '#F0DFCC', color: '#9E5A37' },
+    taken: { bg: '#DAEADC', color: '#2E6B3E' },
   }
   const statusStyle = statusColors[trip.status] ?? statusColors.planning
 
@@ -59,7 +61,7 @@ export default function TripDetail({ trip, isOwner = false }: { trip: Trip; isOw
       <div style={{ height: 'calc(200px + env(safe-area-inset-top, 0px))', position: 'relative', overflow: 'hidden' }}>
         <MountainBanner />
         <Link
-          href="/trips"
+          href={isOwner ? '/trips' : '/'}
           style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', left: '18px', width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(251,247,240,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
           className="detail-back-btn"
           aria-label="Back to trips"
@@ -69,6 +71,23 @@ export default function TripDetail({ trip, isOwner = false }: { trip: Trip; isOw
           </svg>
         </Link>
       </div>
+
+      {/* Guest claim banner — trip was created without an account */}
+      {claimable && (
+        <div style={{ background: 'var(--accent)', padding: '12px 24px' }}>
+          <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+            <span style={{ color: '#FBF7F0', fontSize: '14px', lineHeight: 1.4 }}>
+              ✦&ensp;This trip is saved on this device for now. Create a free account to keep it, edit it, and share it.
+            </span>
+            <Link
+              href={`/login?callbackUrl=/trips/${trip.id}`}
+              style={{ background: '#FBF7F0', color: 'var(--accent)', padding: '8px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              Save this trip
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Trip header */}
       <div style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '22px 40px 28px' }}>
@@ -185,11 +204,12 @@ export default function TripDetail({ trip, isOwner = false }: { trip: Trip; isOw
 
       {/* Content */}
       <div style={{ maxWidth: '960px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'overview' && <OverviewTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
-        {activeTab === 'itinerary' && <ItineraryTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
-        {activeTab === 'bookings' && <BookingsTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
-        {activeTab === 'food' && <FoodTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
-        {activeTab === 'tips' && <TipsTab plan={plan} tripId={trip.id} onRefined={handleRefined} />}
+        {/* Refinement is owner-only: passing an empty tripId hides the panel */}
+        {activeTab === 'overview' && <OverviewTab plan={plan} tripId={isOwner ? trip.id : ''} onRefined={handleRefined} />}
+        {activeTab === 'itinerary' && <ItineraryTab plan={plan} tripId={isOwner ? trip.id : ''} onRefined={handleRefined} />}
+        {activeTab === 'bookings' && <BookingsTab plan={plan} tripId={isOwner ? trip.id : ''} onRefined={handleRefined} />}
+        {activeTab === 'food' && <FoodTab plan={plan} tripId={isOwner ? trip.id : ''} onRefined={handleRefined} />}
+        {activeTab === 'tips' && <TipsTab plan={plan} tripId={isOwner ? trip.id : ''} onRefined={handleRefined} />}
       </div>
 
       <style>{`
@@ -556,7 +576,7 @@ function TipsTab({ plan, tripId, onRefined }: { plan: DestinationPlan; tripId: s
               <div
                 key={j}
                 style={{ fontSize: '14px', color: 'var(--text2)', paddingLeft: '16px', borderLeft: '3px solid var(--border)', lineHeight: 1.45 }}
-                dangerouslySetInnerHTML={{ __html: tip.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}
+                dangerouslySetInnerHTML={{ __html: escapeHtml(tip).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}
               />
             ))}
           </div>

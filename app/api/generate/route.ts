@@ -4,6 +4,8 @@ import { buildSynthesisPrompt, SYNTHESIS_SYSTEM } from '@/lib/prompts'
 import { TripGuidelines } from '@/lib/schema'
 import { auth } from '@/auth'
 import sql from '@/lib/db'
+import { ANON_COOKIE, ANON_DAILY_LIMIT, IP_DAILY_LIMIT, hashIp } from '@/lib/anon'
+import { validateGuidelines } from '@/lib/validate'
 
 async function webSearch(query: string): Promise<string> {
   const response = await anthropic.messages.create({
@@ -24,6 +26,41 @@ async function webSearch(query: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   const guidelines: TripGuidelines = await req.json()
+
+  const validationError = validateGuidelines(guidelines)
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 })
+  }
+
+  // Identify the caller: signed-in user, or guest via anon cookie.
+  const session = await auth()
+  const userId = session?.user?.id ?? null
+  let anonId: string | null = null
+  let ipHash: string | null = null
+  if (!userId) {
+    anonId = req.cookies.get(ANON_COOKIE)?.value ?? crypto.randomUUID()
+    const ip = (req.headers.get('x-forwarded-for') ?? 'unknown').split(',')[0].trim()
+    ipHash = hashIp(ip)
+
+    // Guest rate limits: per device (cookie) and per IP, rolling 24h.
+    // The IP layer means clearing cookies doesn't reset the meter.
+    try {
+      const [cookieRows, ipRows] = await Promise.all([
+        sql`SELECT COUNT(*)::int AS n FROM trips WHERE anon_id = ${anonId} AND created_at > NOW() - INTERVAL '1 day'`,
+        sql`SELECT COUNT(*)::int AS n FROM trips WHERE ip_hash = ${ipHash} AND created_at > NOW() - INTERVAL '1 day'`,
+      ])
+      if ((cookieRows[0]?.n ?? 0) >= ANON_DAILY_LIMIT || (ipRows[0]?.n ?? 0) >= IP_DAILY_LIMIT) {
+        return NextResponse.json(
+          { error: `You've hit the guest limit of ${ANON_DAILY_LIMIT} trips per day. Create a free account to keep planning.` },
+          { status: 429 },
+        )
+      }
+    } catch {
+      // anon_id/ip_hash columns missing (migration not run yet) — fall through;
+      // the INSERT below will surface a clearer error if so.
+    }
+  }
+
   const encoder = new TextEncoder()
   const stream = new TransformStream()
   const writer = stream.writable.getWriter()
@@ -38,8 +75,6 @@ export async function POST(req: NextRequest) {
 
   ;(async () => {
     try {
-      const session = await auth()
-
       const { destination, targetMonthYear, startDate, endDate, timeframeMode,
         departureAirport, drivingFrom, travelMode,
         domesticOrInternational, lodgingPrefs, interests, tripType } = guidelines
@@ -48,16 +83,22 @@ export async function POST(req: NextRequest) {
         ? `${startDate} to ${endDate}`
         : targetMonthYear
 
-      // Save a placeholder trip immediately so it's in the account even if the user navigates away
+      // Save a placeholder trip immediately so it survives even if the user
+      // navigates away. Guests get it under their anon cookie and can claim
+      // it by creating an account later.
       let tripId: string | null = null
-      if (session?.user?.id) {
-        const rows = await sql`
-          INSERT INTO trips (user_id, guidelines, plan, status, emoji, card_color)
-          VALUES (${session.user.id}, ${JSON.stringify(guidelines)}, '{}', 'planning', '🗺️', 'blue')
-          RETURNING id
-        `
-        tripId = rows[0]?.id ?? null
-      }
+      const rows = userId
+        ? await sql`
+            INSERT INTO trips (user_id, guidelines, plan, status, emoji, card_color)
+            VALUES (${userId}, ${JSON.stringify(guidelines)}, '{}', 'planning', '🗺️', 'blue')
+            RETURNING id
+          `
+        : await sql`
+            INSERT INTO trips (anon_id, ip_hash, guidelines, plan, status, emoji, card_color)
+            VALUES (${anonId}, ${ipHash}, ${JSON.stringify(guidelines)}, '{}', 'planning', '🗺️', 'blue')
+            RETURNING id
+          `
+      tripId = rows[0]?.id ?? null
       await send('started', { tripId })
 
       let travelResearch: string
@@ -106,9 +147,12 @@ export async function POST(req: NextRequest) {
         return
       }
 
-      // Update the placeholder with the real plan
+      // Update the placeholder with the real plan (+ its trip-specific emoji)
       if (tripId) {
-        await sql`UPDATE trips SET plan = ${JSON.stringify(plan)} WHERE id = ${tripId}`
+        const emoji = typeof plan.emoji === 'string' && plan.emoji.length > 0 && plan.emoji.length <= 8
+          ? plan.emoji
+          : '🗺️'
+        await sql`UPDATE trips SET plan = ${JSON.stringify(plan)}, emoji = ${emoji} WHERE id = ${tripId}`
       }
 
       await send('complete', { plan, tripId })
@@ -123,7 +167,19 @@ export async function POST(req: NextRequest) {
     }
   })()
 
-  return new NextResponse(stream.readable, {
+  const res = new NextResponse(stream.readable, {
     headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
   })
+
+  // Persist the guest identity so trips can be viewed and later claimed.
+  if (!userId && anonId) {
+    res.cookies.set(ANON_COOKIE, anonId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+    })
+  }
+
+  return res
 }

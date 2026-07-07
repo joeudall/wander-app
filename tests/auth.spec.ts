@@ -80,12 +80,19 @@ test('signup with short password shows error', async ({ page }) => {
 
 // ── Auth guard ───────────────────────────────────────────────────────
 
-test('unauthenticated user is redirected to login from dashboard', async ({ page }) => {
+test('unauthenticated user sees public landing page at root', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveURL(/\/login/)
+  await expect(page).toHaveURL('/')
+  await expect(page.getByRole('link', { name: /plan a trip — no account needed/i })).toBeVisible()
 })
 
-test('unauthenticated user is redirected to login from plan page', async ({ page }) => {
+test('unauthenticated user can open the plan wizard (guest planning)', async ({ page }) => {
   await page.goto('/plan')
+  await expect(page).toHaveURL('/plan')
+  await expect(page.getByPlaceholder(/Grand Teton/i)).toBeVisible()
+})
+
+test('unauthenticated user is redirected to login from trips list', async ({ page }) => {
+  await page.goto('/trips')
   await expect(page).toHaveURL(/\/login/)
 })

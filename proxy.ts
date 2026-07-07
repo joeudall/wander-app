@@ -6,7 +6,9 @@ export default auth((req) => {
   const { pathname } = req.nextUrl
 
   const isPublicRoute =
+    pathname === '/' ||               // landing page (signed-in users see dashboard)
     pathname.startsWith('/login') ||
+    pathname.startsWith('/plan') ||   // guests can plan; trips saved via anon cookie
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/generate') ||
     // Trip pages may be public — let the page component decide

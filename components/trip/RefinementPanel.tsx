@@ -45,9 +45,12 @@ interface RefinementPanelProps {
 
 export default function RefinementPanel({ tripId, tab, onRefined }: RefinementPanelProps) {
   const [loading, setLoading] = useState(false)
+  const canRefine = !!tripId // owner-only: parent passes '' for viewers
   const [customText, setCustomText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [lastRefined, setLastRefined] = useState<string | null>(null)
+
+  if (!canRefine) return null
 
   const handleRefine = async (suggestion: string) => {
     if (!suggestion.trim() || loading) return
