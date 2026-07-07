@@ -137,6 +137,7 @@ export default function PlanPage() {
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let finished = false
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -150,17 +151,25 @@ export default function PlanPage() {
             if (parsed.data.tripId) setSavedTripId(parsed.data.tripId)
           } else if (parsed.event === 'progress') setGenStep(parsed.data.step)
           else if (parsed.event === 'complete') {
+            finished = true
             if (parsed.data.tripId) router.push(`/trips/${parsed.data.tripId}`)
             else router.push('/')
           } else if (parsed.event === 'error') {
+            // Keep `generating` true — the error screen renders inside the
+            // generating state. (Setting it false silently returned users
+            // to the form with no explanation.)
+            finished = true
             setGenError(parsed.data.message)
-            setGenerating(false)
           }
         }
       }
+      // Stream ended without a complete/error event (proxy cut, network blip).
+      // The server keeps running — the trip may still land in My Trips.
+      if (!finished) {
+        setGenError('Connection interrupted — your trip may still be saving. Check My Trips in a minute before retrying.')
+      }
     } catch (err) {
       setGenError(err instanceof Error ? err.message : 'Generation failed')
-      setGenerating(false)
     }
   }
 

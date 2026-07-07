@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
 
   const response = await anthropic.messages.create({
     model: MODELS.synthesis,
-    max_tokens: 6000,
+    max_tokens: 12000, // large sections (itinerary + booking alternatives) can exceed 6k and truncate
+
     system: REFINEMENT_SYSTEM,
     messages: [{ role: 'user', content: prompt }],
   })
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     updatedSection = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text)
   } catch {
+    console.error('[refine] parse failed', { stopReason: response.stop_reason, outputChars: text.length, tail: text.slice(-160) })
     return NextResponse.json({ error: 'Failed to parse refinement. Please try again.' }, { status: 500 })
   }
 

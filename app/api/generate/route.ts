@@ -120,7 +120,9 @@ export async function POST(req: NextRequest) {
 
       const synthesis = await anthropic.messages.create({
         model: MODELS.synthesis,
-        max_tokens: 8000,
+        // Plans with booking alternatives regularly exceed 8k output tokens;
+        // truncation here breaks JSON parsing and kills the whole generation.
+        max_tokens: 20000,
         system: SYNTHESIS_SYSTEM,
         messages: [{ role: 'user', content: buildSynthesisPrompt(guidelines, {
           flights: travelResearch,
@@ -140,7 +142,14 @@ export async function POST(req: NextRequest) {
       try {
         const jsonMatch = planJson.match(/\{[\s\S]*\}/)
         plan = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(planJson)
-      } catch {
+      } catch (parseErr) {
+        // Make failures visible in Vercel logs: truncation shows up as stop_reason 'max_tokens'
+        console.error('[generate] plan parse failed', {
+          stopReason: synthesis.stop_reason,
+          outputChars: planJson.length,
+          tail: planJson.slice(-160),
+          error: parseErr instanceof Error ? parseErr.message : String(parseErr),
+        })
         // Clean up the placeholder if we couldn't parse the plan
         if (tripId) await sql`DELETE FROM trips WHERE id = ${tripId}`
         await send('error', { message: 'Failed to parse trip plan. Please try again.' })
