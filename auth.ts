@@ -21,7 +21,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null
 
         const rows = await sql`
-          SELECT id, email, password_hash FROM users WHERE email = ${credentials.email as string}
+          SELECT id, email, password_hash FROM users
+          WHERE LOWER(email) = LOWER(${credentials.email as string})
         `
         const user = rows[0]
         if (!user) return null
@@ -39,10 +40,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'google' && user.email) {
-        const existing = await sql`SELECT id FROM users WHERE email = ${user.email}`
+        const existing = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${user.email})`
         if (existing.length === 0) {
           const rows = await sql`
-            INSERT INTO users (email, password_hash) VALUES (${user.email}, NULL)
+            INSERT INTO users (email, password_hash) VALUES (${user.email.toLowerCase()}, NULL)
             RETURNING id
           `
           user.id = rows[0].id
