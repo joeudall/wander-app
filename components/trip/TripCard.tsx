@@ -67,6 +67,13 @@ export default function TripCard({
         <div style={{ fontSize: '22px', marginBottom: '10px' }}>✦</div>
         <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text2)', marginBottom: '4px' }}>Generating trip plan…</div>
         <div style={{ fontSize: '13px' }}>Refresh to check status</div>
+        <button
+          onClick={handleDelete}
+          disabled={loading}
+          style={{ marginTop: '14px', background: 'none', border: 'none', color: 'var(--red)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}
+        >
+          {loading ? 'Removing…' : 'Remove — generation didn’t finish'}
+        </button>
       </div>
     )
   }

@@ -7,6 +7,10 @@ import sql from '@/lib/db'
 import { ANON_COOKIE, ANON_DAILY_LIMIT, IP_DAILY_LIMIT, hashIp } from '@/lib/anon'
 import { validateGuidelines } from '@/lib/validate'
 
+// Research + long synthesis regularly exceeds Vercel's 5-min default.
+// With Fluid compute, Hobby allows up to 800s.
+export const maxDuration = 800
+
 async function webSearch(query: string): Promise<string> {
   const response = await anthropic.messages.create({
     model: MODELS.utility,
@@ -122,7 +126,9 @@ export async function POST(req: NextRequest) {
         model: MODELS.synthesis,
         // Plans with booking alternatives regularly exceed 8k output tokens;
         // truncation here breaks JSON parsing and kills the whole generation.
-        max_tokens: 20000,
+        // Kept moderate — bigger caps let the model run long and risk the
+        // function timeout instead.
+        max_tokens: 14000,
         system: SYNTHESIS_SYSTEM,
         messages: [{ role: 'user', content: buildSynthesisPrompt(guidelines, {
           flights: travelResearch,
