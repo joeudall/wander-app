@@ -5,21 +5,11 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Trip } from '@/lib/schema'
 import TripCard from './TripCard'
+import { StarIcon as BrandStar, getInitials } from '@/components/ui/Brand'
 
 type Filter = 'all' | 'upcoming' | 'past' | 'planning' | 'taken'
 
-function getInitials(email: string | null | undefined): string {
-  if (!email) return '?'
-  const parts = email.split('@')[0].split(/[._-]/)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return email.slice(0, 2).toUpperCase()
-}
-
-const StarIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
-    <path d="M16 1 L19.2 12.8 L31 16 L19.2 19.2 L16 31 L12.8 19.2 L1 16 L12.8 12.8 Z" fill="#2F6E73" />
-  </svg>
-)
+const StarIcon = () => <BrandStar size={22} />
 
 export default function TripsDashboard({ trips: initialTrips }: { trips: Trip[] }) {
   const { data: session } = useSession()

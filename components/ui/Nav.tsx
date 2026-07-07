@@ -4,24 +4,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useState } from 'react'
-
-const StarIcon = ({ color = '#2F6E73' }: { color?: string }) => (
-  <svg width="26" height="26" viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
-    <path d="M16 1 L19.2 12.8 L31 16 L19.2 19.2 L16 31 L12.8 19.2 L1 16 L12.8 12.8 Z" fill={color} />
-  </svg>
-)
-
-function getInitials(email: string | null | undefined): string {
-  if (!email) return '?'
-  const parts = email.split('@')[0].split(/[._-]/)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return email.slice(0, 2).toUpperCase()
-}
+import { StarIcon, getInitials } from '@/components/ui/Brand'
 
 export default function Nav() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [showMenu, setShowMenu] = useState(false)
+
+  // The login page has its own full-screen brand panel — no double logo.
+  if (pathname === '/login') return null
 
   return (
     <nav
@@ -57,10 +48,20 @@ export default function Nav() {
         <NavLink href="/" active={pathname === '/'}>Trips</NavLink>
         <NavLink href="/plan" active={pathname === '/plan'}>Plan a trip</NavLink>
 
+        {!session?.user && (
+          <Link
+            href="/login"
+            style={{ background: 'var(--accent)', color: '#FBF7F0', padding: '8px 18px', borderRadius: '999px', fontSize: '13.5px', fontWeight: 600, textDecoration: 'none' }}
+          >
+            Sign in
+          </Link>
+        )}
+
         {session?.user && (
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowMenu((v) => !v)}
+              aria-label="Account menu"
               style={{
                 width: '36px',
                 height: '36px',

@@ -43,6 +43,7 @@ Produce a complete trip plan as a JSON object matching this exact TypeScript int
 
 {
   "destination": string,
+  "emoji": string (ONE emoji that best captures this specific trip — e.g. 🏔️ 🏖️ 🗼 🌋 🎿 — not 🗺️),
   "summary": string (2–3 sentence overview),
   "highlights": string[] (4–6 bullet highlights),
   "weather": {

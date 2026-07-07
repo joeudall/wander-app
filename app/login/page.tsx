@@ -4,11 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-const StarIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 32 32">
-    <path d="M16 1 L19.2 12.8 L31 16 L19.2 19.2 L16 31 L12.8 19.2 L1 16 L12.8 12.8 Z" fill="#5FA39A" />
-  </svg>
-)
+import { StarIcon } from '@/components/ui/Brand'
 
 const MountainBg = () => (
   <svg viewBox="0 0 440 620" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ display: 'block', position: 'absolute', inset: 0 }}>
@@ -100,19 +96,19 @@ function LoginForm() {
     fontWeight: 600,
     letterSpacing: '0.06em',
     textTransform: 'uppercase',
-    color: '#998f7c',
+    color: 'var(--text3)',
     marginBottom: '8px',
     display: 'block',
   }
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    background: '#FBF7F0',
-    border: '1px solid #E6DBC9',
+    background: 'var(--bg)',
+    border: '1px solid var(--border)',
     borderRadius: '10px',
     padding: '13px 15px',
     fontSize: '15px',
-    color: '#2E2A24',
+    color: 'var(--text)',
     outline: 'none',
     fontFamily: 'inherit',
     transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -125,7 +121,7 @@ function LoginForm() {
         <MountainBg />
         <div style={{ position: 'relative', padding: '44px', height: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
-            <StarIcon />
+            <StarIcon color="#5FA39A" />
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '21px', fontWeight: 700, letterSpacing: '-0.02em', color: '#F4EEE4' }}>Wander</span>
           </div>
           <div style={{ marginTop: 'auto' }}>
@@ -204,7 +200,7 @@ function LoginForm() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
             <div style={{ flex: 1, height: '1px', background: '#E6DBC9' }} />
-            <span style={{ fontSize: '12px', color: '#998f7c', fontWeight: 500 }}>or</span>
+            <span style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: 500 }}>or</span>
             <div style={{ flex: 1, height: '1px', background: '#E6DBC9' }} />
           </div>
 
@@ -218,8 +214,7 @@ function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 style={inputStyle}
-                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-                onBlur={(e) => { e.target.style.borderColor = '#E6DBC9'; e.target.style.boxShadow = 'none' }}
+                className="input"
               />
             </div>
 
@@ -238,8 +233,7 @@ function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 style={inputStyle}
-                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px rgba(47,110,115,.12)' }}
-                onBlur={(e) => { e.target.style.borderColor = '#E6DBC9'; e.target.style.boxShadow = 'none' }}
+                className="input"
               />
             </div>
 

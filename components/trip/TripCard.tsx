@@ -121,6 +121,7 @@ export default function TripCard({
         <button
           onClick={() => setMenuOpen((p) => !p)}
           disabled={loading}
+          aria-label="Trip actions"
           style={{
             background: 'var(--surface)',
             border: '1px solid var(--border)',
