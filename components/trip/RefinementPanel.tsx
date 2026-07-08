@@ -19,6 +19,7 @@ const TAB_SUGGESTIONS: Record<RefinementTab, string[]> = {
     'Add an off-the-beaten-path day',
   ],
   bookings: [
+    'Suggest alternatives for each booking',
     'Add restaurant reservations',
     'Include activity bookings',
     'Simplify to must-do bookings',

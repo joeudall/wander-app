@@ -109,14 +109,8 @@ Produce a complete trip plan as a JSON object matching this exact TypeScript int
     "time": string,
     "platform": string,
     "reference": string,
-    "notes": string,
-    "alternatives": [{
-      "activity": string,
-      "description": string (1 sentence, practical),
-      "cost": string,
-      "platform": string
-    }] (3–5 alternative activities or experiences for the same time slot)
-  }]
+    "notes": string
+  }] (ONLY the must-book items — advance reservations that sell out or gate the trip. 3–8 rows max. Do NOT include alternatives; users request those later.)
 }
 
 Rules:
@@ -124,6 +118,7 @@ Rules:
 - Tie activities to practical logistics (hours, drive times, booking requirements)
 - When uncertain, say so explicitly
 - Make the itinerary specific and actionable, not generic
+- Be concise: descriptions 1–2 sentences, no filler prose
 - Tag each activity with relevant tags from: ["transit", "culture", "food", "free", "booking", "nature", "adventure"]`
 }
 
